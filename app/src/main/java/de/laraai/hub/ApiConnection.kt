@@ -94,8 +94,7 @@ internal object ApiConnection {
         endpoint: String,
         model: String,
         prompt: String,
-        mode: ApiMode,
-        conversationId: String? = null
+        mode: ApiMode
     ): String = withContext(Dispatchers.IO) {
         val root = rootUrl(endpoint, AiProvider.CUSTOM)
         val apiKey = loadLegacyApiKey(context, root)
@@ -108,7 +107,8 @@ internal object ApiConnection {
         endpoint: String,
         model: String,
         prompt: String,
-        mode: ApiMode
+        mode: ApiMode,
+        conversationId: String? = null
     ): String = withContext(Dispatchers.IO) {
         require(model.isNotBlank()) { "Bitte zuerst ein Modell auswählen." }
         require(prompt.isNotBlank()) { "Die Nachricht darf nicht leer sein." }
