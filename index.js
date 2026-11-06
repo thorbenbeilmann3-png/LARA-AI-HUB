@@ -83,12 +83,13 @@ function proxyRequest(targetUrl, method, body, response) {
       resolve();
     });
 
-    req.setTimeout(30000, () => {
+    // Timeout auf 120 Sekunden erhöht (Modell-Laden kann lange dauern)
+    req.setTimeout(120000, () => {
       req.destroy();
       sendResponse(response, 504, {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
-      }, JSON.stringify({ error: "Anfrage an Ollama-Server timed out" }));
+      }, JSON.stringify({ error: "Anfrage an Ollama-Server timed out (120s)" }));
       resolve();
     });
 
@@ -135,11 +136,40 @@ const server = http.createServer((request, response) => {
       return;
     }
     const base = ollamaUrl.endsWith("/") ? ollamaUrl : ollamaUrl + "/";
-    void proxyRequest(base + "v1/models", "GET", null, response);
+    void proxyRequest(base + "api/tags", "GET", null, response);
     return;
   }
 
-  // Proxy: POST /v1/chat/completions
+  // Proxy: POST /api/chat (Ollama-natives Format)
+  if (requestUrl.pathname === "/api/chat" && request.method === "POST") {
+    let body = "";
+    request.on("data", (chunk) => (body += chunk));
+    request.on("end", () => {
+      try {
+        const data = JSON.parse(body || "{}");
+        const ollamaUrl = data.ollamaUrl;
+        if (!ollamaUrl) {
+          sendResponse(response, 400, { "Content-Type": "application/json" }, JSON.stringify({ error: "ollamaUrl is required" }));
+          return;
+        }
+        if (!isAllowedUrl(ollamaUrl)) {
+          sendResponse(response, 403, { "Content-Type": "application/json" }, JSON.stringify({ error: "Ollama-Adresse nicht zulässig (SSRF-Schutz)" }));
+          return;
+        }
+        delete data.ollamaUrl;
+        data.stream = false;
+        const base = ollamaUrl.endsWith("/") ? ollamaUrl : ollamaUrl + "/";
+        void proxyRequest(base + "api/chat", "POST", JSON.stringify(data), response);
+        return;
+      } catch (e) {
+        sendResponse(response, 400, { "Content-Type": "application/json" }, JSON.stringify({ error: e.message }));
+        return;
+      }
+    });
+    return;
+  }
+
+  // Proxy: POST /v1/chat/completions (OpenAI-kompatibel, Fallback)
   if (requestUrl.pathname === "/v1/chat/completions" && request.method === "POST") {
     let body = "";
     request.on("data", (chunk) => (body += chunk));
@@ -159,8 +189,10 @@ const server = http.createServer((request, response) => {
         data.stream = false;
         const base = ollamaUrl.endsWith("/") ? ollamaUrl : ollamaUrl + "/";
         void proxyRequest(base + "v1/chat/completions", "POST", JSON.stringify(data), response);
+        return;
       } catch (e) {
         sendResponse(response, 400, { "Content-Type": "application/json" }, JSON.stringify({ error: e.message }));
+        return;
       }
     });
     return;

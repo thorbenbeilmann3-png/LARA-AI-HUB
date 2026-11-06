@@ -131,7 +131,7 @@ footer{color:var(--muted);font-size:11px;padding:25px 0}
     <div class="card">
       <h3>KI-ENGINE</h3>
       <div class="big">Ollama</div>
-      <div class="small">Verbindung noch zu prüfen</div>
+      <div class="small" id="dashboardModelStatus">Verbindung noch zu prüfen</div>
     </div>
     <div class="card">
       <h3>ARENA</h3>
@@ -196,10 +196,14 @@ footer{color:var(--muted);font-size:11px;padding:25px 0}
     <h3>SERVERADRESSE</h3>
     <label>Ollama-Adresse</label>
     <input id="ollamaUrl" value="http://10.179.130.230:12434">
-    <label>Modellname</label>
-    <input id="modelName" value="qwen3.5:2b">
-    <button class="primary" onclick="testOllama()">Verbindung testen</button>
-    <button class="secondary" onclick="saveOllamaSettings()">Einstellungen speichern</button>
+    <label>Modell</label>
+    <select id="modelSelect" style="width:100%;background:#111116;color:white;border:1px solid var(--border);border-radius:8px;padding:13px;margin:7px 0 13px;outline:none;">
+      <option value="">Modelle laden…</option>
+    </select>
+    <div class="row">
+      <button class="primary" onclick="testOllama()">Verbindung testen</button>
+      <button class="secondary" onclick="saveOllamaSettings()">Einstellungen speichern</button>
+    </div>
     <p id="ollamaStatus" class="small">Noch nicht getestet.</p>
     <p id="ollamaSaveStatus" class="small"></p>
   </div>
@@ -246,11 +250,81 @@ footer{color:var(--muted);font-size:11px;padding:25px 0}
 </div>
 
 <script>
+let availableModels = [];
+
 function showPage(id,button){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   button.classList.add('active');
+}
+
+function getApiUrl(){
+  return localStorage.getItem('lara_api_url') || document.getElementById('apiUrl').value.trim() || 'http://localhost:3000';
+}
+
+function getOllamaUrl(){
+  return document.getElementById('ollamaUrl').value.trim();
+}
+
+function getSelectedModel(){
+  const sel=document.getElementById('modelSelect');
+  return sel ? sel.value.trim() : '';
+}
+
+function setModelOptions(models){
+  const sel=document.getElementById('modelSelect');
+  if(!sel)return;
+  sel.innerHTML='';
+  if(models.length===0){
+    const o=document.createElement('option');
+    o.value='';
+    o.textContent='Keine Modelle gefunden';
+    o.disabled=true;
+    sel.appendChild(o);
+    return;
+  }
+  models.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m;
+    o.textContent=m;
+    sel.appendChild(o);
+  });
+}
+
+async function loadModels(){
+  const ollamaUrl=getOllamaUrl();
+  if(!ollamaUrl){
+    showChatError('Bitte eine Ollama-Adresse eingeben.');
+    return;
+  }
+  try{
+    const apiUrl=getApiUrl();
+    const response=await fetch(apiUrl+'/v1/models?ollamaUrl='+encodeURIComponent(ollamaUrl));
+    if(!response.ok){
+      const errText=await response.text();
+      throw new Error('API-Fehler '+response.status+': '+errText);
+    }
+    const data=await response.json();
+    const models=data.models || data.tags || [];
+    const names=models.map(m=>m.name||m).filter(Boolean);
+    availableModels=names;
+    setModelOptions(names);
+    if(names.length>0){
+      // Erstes Modell vorauswählen, wenn keines gespeichert
+      const saved=localStorage.getItem('lara_ollama_model');
+      if(!saved || !names.includes(saved)){
+        selValue=names[0];
+        document.getElementById('modelSelect').value=names[0];
+        localStorage.setItem('lara_ollama_model',names[0]);
+      }
+    }
+    return names;
+  }catch(err){
+    showChatError('Modelle konnten nicht geladen werden: '+err.message);
+    setModelOptions([]);
+    return [];
+  }
 }
 
 async function sendMessage(){
@@ -259,15 +333,15 @@ async function sendMessage(){
   const value=input.value.trim();
   if(!value)return;
 
-  const ollamaUrl=document.getElementById('ollamaUrl').value.trim();
-  const model=document.getElementById('modelName').value.trim();
+  const ollamaUrl=getOllamaUrl();
+  const model=getSelectedModel();
 
   if(!ollamaUrl){
     showChatError('Bitte eine Ollama-Adresse in den Einstellungen eingeben.');
     return;
   }
   if(!model){
-    showChatError('Bitte einen Modellnamen in den Einstellungen eingeben.');
+    showChatError('Bitte ein Modell auswählen.');
     return;
   }
   try{
@@ -277,7 +351,7 @@ async function sendMessage(){
     return;
   }
 
-  const apiUrl=localStorage.getItem('lara_api_url') || document.getElementById('apiUrl').value.trim() || 'http://localhost:3000';
+  const apiUrl=getApiUrl();
 
   const userMsg=document.createElement('div');
   userMsg.className='message user';
@@ -298,7 +372,7 @@ async function sendMessage(){
   box.scrollTop=box.scrollHeight;
 
   try{
-    const response=await fetch(apiUrl + '/v1/chat/completions',{
+    const response=await fetch(apiUrl+'/api/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -340,15 +414,39 @@ function showChatError(text){
 
 async function testOllama(){
   const status=document.getElementById('ollamaStatus');
-  const url=document.getElementById('ollamaUrl').value.replace(/\/+$/,'');
-  status.textContent='Verbindung wird geprüft...';
+  const saveStatus=document.getElementById('ollamaSaveStatus');
+  const ollamaUrl=getOllamaUrl();
+  if(!ollamaUrl){
+    status.textContent='Fehler: Bitte eine Ollama-Adresse eingeben.';
+    return;
+  }
+  status.textContent='Verbindung wird geprüft…';
+  saveStatus.textContent='';
   try{
-    const response=await fetch(url+'/api/tags');
-    if(!response.ok)throw new Error('HTTP '+response.status);
+    const apiUrl=getApiUrl();
+    const response=await fetch(apiUrl+'/v1/models?ollamaUrl='+encodeURIComponent(ollamaUrl));
+    if(!response.ok){
+      const errText=await response.text();
+      throw new Error('HTTP '+response.status+': '+errText);
+    }
     const data=await response.json();
-    status.textContent='Server erreichbar. Modelle gefunden: '+(data.models?.length ?? 0);
+    const models=data.models || data.tags || [];
+    const names=models.map(m=>m.name||m).filter(Boolean);
+    availableModels=names;
+    setModelOptions(names);
+    let msg='Server erreichbar. '+names.length+' Modell(e) gefunden: '+names.join(', ');
+    if(names.length>0){
+      msg+='. Erstes Modell vorausgewählt.';
+      const sel=document.getElementById('modelSelect');
+      if(sel) sel.value=names[0];
+      localStorage.setItem('lara_ollama_model',names[0]);
+    }
+    status.textContent=msg;
+    status.style.color='var(--green)';
   }catch(error){
-    status.textContent='Verbindung fehlgeschlagen: '+error.message+'. CORS oder Netzwerk prüfen.';
+    status.textContent='Verbindung fehlgeschlagen: '+error.message+'. Netzwerk, Proxy oder Ollama-Server prüfen.';
+    status.style.color='var(--muted)';
+    setModelOptions([]);
   }
 }
 
@@ -372,10 +470,9 @@ function saveSettings(){
 
 function saveOllamaSettings(){
   const urlInput=document.getElementById('ollamaUrl');
-  const modelInput=document.getElementById('modelName');
   const status=document.getElementById('ollamaSaveStatus');
   const url=urlInput.value.trim();
-  const model=modelInput.value.trim();
+  const model=getSelectedModel();
 
   if(!url){
     status.style.color='var(--green)';
@@ -391,14 +488,14 @@ function saveOllamaSettings(){
   }
   if(!model){
     status.style.color='var(--green)';
-    status.textContent='Fehler: Bitte einen Modellnamen eingeben.';
+    status.textContent='Fehler: Bitte ein Modell auswählen.';
     return;
   }
 
   localStorage.setItem('lara_ollama_url',url);
   localStorage.setItem('lara_ollama_model',model);
   status.style.color='var(--green)';
-  status.textContent='Gespeichert: Ollama-Adresse und Modellname wurden dauerhaft gespeichert.';
+  status.textContent='Gespeichert: Ollama-Adresse und Modell wurden dauerhaft gespeichert.';
 }
 
 function loadSettings(){
@@ -409,12 +506,10 @@ function loadSettings(){
   if(savedOllamaUrl){
     document.getElementById('ollamaUrl').value=savedOllamaUrl;
   }
-  if(savedModel){
-    document.getElementById('modelName').value=savedModel;
-  }
   if(savedApiUrl){
     document.getElementById('apiUrl').value=savedApiUrl;
   }
+  // Modell wird nach dem Laden der Liste gesetzt (siehe loadModels)
 }
 
 window.addEventListener('DOMContentLoaded',loadSettings);
