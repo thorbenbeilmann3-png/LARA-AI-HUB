@@ -532,9 +532,15 @@ private fun LaraHubApp() {
                         if (selectedProvider == AiProvider.OPENCLAW) {
                             Text(
                                 "Achtung: Ein OpenClaw-Gateway-Token kann Administrator-, Freigabe- und Schreibrechte besitzen. " +
-                                    "Nur mit deinem eigenen Gateway verbinden; für Verbindungen außerhalb des privaten Netzes HTTPS verwenden.",
+                                    "Nur mit deinem eigenen Gateway verbinden; den Endpunkt niemals öffentlich freigeben.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                "Die OpenClaw-HTTP-Schnittstelle ist standardmäßig deaktiviert. " +
+                                    "Aktiviere gateway.http.endpoints.chatCompletions.enabled=true in deiner Gateway-Konfiguration. " +
+                                    "Die vollständige Einrichtung steht in docs/OPENCLAW_SETUP.md.",
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                         Divider()
