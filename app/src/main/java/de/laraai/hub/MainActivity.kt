@@ -224,7 +224,8 @@ private fun LaraHubApp() {
                 val apiLabel = if (selectedProvider == AiProvider.OLLAMA) {
                     if (result.mode == ApiMode.OLLAMA_NATIVE) "Ollama API" else "Ollama · OpenAI-kompatibel"
                 } else selectedProvider.label
-                status = "Verbunden: $apiLabel · ${result.models.size} Modell(e) gefunden"
+                val itemLabel = if (selectedProvider == AiProvider.OPENCLAW) "Agent(en)" else "Modell(e)"
+                status = "Verbunden: $apiLabel · ${result.models.size} $itemLabel gefunden"
             } catch (e: Exception) {
                 status = "Verbindung fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
             } finally {
@@ -449,7 +450,9 @@ private fun LaraHubApp() {
                             value = model,
                             onValueChange = { model = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Modellname") },
+                            label = {
+                                Text(if (selectedProvider == AiProvider.OPENCLAW) "OpenClaw-Agent" else "Modellname")
+                            },
                             singleLine = true
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -528,7 +531,7 @@ private fun LaraHubApp() {
                         )
                         if (selectedProvider == AiProvider.OPENCLAW) {
                             Text(
-                                "Achtung: Ein OpenClaw-Gateway-Token kann weitreichende Operator-Rechte besitzen. " +
+                                "Achtung: Ein OpenClaw-Gateway-Token kann Administrator-, Freigabe- und Schreibrechte besitzen. " +
                                     "Nur mit deinem eigenen Gateway verbinden; für Verbindungen außerhalb des privaten Netzes HTTPS verwenden.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.error
