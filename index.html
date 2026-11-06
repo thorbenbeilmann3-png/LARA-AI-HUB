@@ -381,7 +381,7 @@ async function sendMessage(){
   box.scrollTop=box.scrollHeight;
 
   try{
-    const response=await fetch(apiUrl+'/api/chat',{
+    const response=await fetch(apiUrl+'/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
