@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
 <meta name="theme-color" content="#101014">
 <title>LARA NEXUS</title>
 <style>
@@ -17,9 +17,13 @@
   --green:#67d69a;
 }
 *{box-sizing:border-box}
+html{min-height:100%}
 body{
   margin:0;background:var(--bg);color:var(--text);
-  font-family:Arial,sans-serif;min-height:100vh;
+  font-family:Arial,sans-serif;
+  min-height:100vh;
+  min-height:100dvh;
+  min-height:var(--app-height, 100dvh);
 }
 header{
   height:70px;padding:0 22px;display:flex;
@@ -30,7 +34,7 @@ header{
 .logo{font-size:21px;font-weight:800;letter-spacing:3px}
 .logo span{color:var(--gold)}
 .status{font-size:12px;color:var(--green)}
-.layout{display:flex;min-height:calc(100vh - 70px)}
+.layout{display:flex;min-height:calc(100vh - 70px);min-height:calc(100dvh - 70px);min-height:calc(var(--app-height, 100dvh) - 70px)}
 nav{
   width:220px;padding:22px 12px;
   border-right:1px solid var(--border);
@@ -76,7 +80,8 @@ input,textarea,select{
 }
 input:focus,textarea:focus{border-color:var(--gold)}
 .chatbox{
-  height:350px;overflow-y:auto;background:#111116;
+  height:350px;overflow-y:auto;overscroll-behavior:contain;
+  overflow-anchor:none;background:#111116;
   border:1px solid var(--border);border-radius:10px;
   padding:15px;margin-bottom:12px;
 }
@@ -95,6 +100,7 @@ footer{color:var(--muted);font-size:11px;padding:25px 0}
   .nav-title{display:none}
   nav button{min-width:max-content;width:auto;padding:11px}
   main{padding:18px}
+  .layout{min-height:calc(100vh - 60px);min-height:calc(100dvh - 60px);min-height:calc(var(--app-height, 100dvh) - 60px)}
   header{height:60px}
   .logo{font-size:17px}
 }
@@ -275,6 +281,17 @@ function showPage(id,button){
   button.classList.add('active');
 }
 
+function updateVisibleViewportHeight(){
+  if(!window.visualViewport || window.innerWidth>700) return;
+  const height=Math.round(window.visualViewport.height);
+  if(height>0) document.documentElement.style.setProperty('--app-height',height+'px');
+}
+
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',updateVisibleViewportHeight,{passive:true});
+  window.addEventListener('orientationchange',updateVisibleViewportHeight,{passive:true});
+}
+
 function getApiUrl(){
   return localStorage.getItem('lara_api_url') || document.getElementById('apiUrl').value.trim() || 'http://localhost:3000';
 }
@@ -349,9 +366,14 @@ async function loadModels(){
   }
 }
 
+function isChatNearBottom(box){
+  return box.scrollHeight-box.scrollTop-box.clientHeight<50;
+}
+
 async function sendMessage(){
   const input=document.getElementById('chatInput');
   const box=document.getElementById('chatbox');
+  const shouldFollowNewMessages=isChatNearBottom(box);
   const value=input.value.trim();
   if(!value)return;
 
@@ -381,7 +403,7 @@ async function sendMessage(){
   box.appendChild(userMsg);
   input.value='';
   chatHistory.push({role:'user',content:value});
-  box.scrollTop=box.scrollHeight;
+  if(shouldFollowNewMessages) box.scrollTop=box.scrollHeight;
 
   const loading=document.getElementById('chatLoading');
   const error=document.getElementById('chatError');
@@ -392,7 +414,7 @@ async function sendMessage(){
   botMsg.className='message bot';
   botMsg.textContent='';
   box.appendChild(botMsg);
-  box.scrollTop=box.scrollHeight;
+  if(shouldFollowNewMessages) box.scrollTop=box.scrollHeight;
 
   try{
     const response=await fetch(apiUrl+'/v1/chat/completions',{
@@ -427,7 +449,7 @@ async function sendMessage(){
     showChatError('Verbindung fehlgeschlagen: '+err.message+'. Bitte Ollama-Adresse und Server prüfen.');
   } finally{
     loading.style.display='none';
-    box.scrollTop=box.scrollHeight;
+    if(shouldFollowNewMessages) box.scrollTop=box.scrollHeight;
   }
 }
 
@@ -541,6 +563,7 @@ function loadSettings(){
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
+  updateVisibleViewportHeight();
   loadSettings();
   document.getElementById('modelSelect').addEventListener('change',event=>{
     preferredModel=event.target.value;
