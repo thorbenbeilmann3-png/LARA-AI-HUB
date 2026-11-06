@@ -546,6 +546,18 @@ window.addEventListener('DOMContentLoaded',()=>{
     preferredModel=event.target.value;
     if(preferredModel) localStorage.setItem('lara_ollama_model',preferredModel);
   });
+  // Modellliste nach dem Laden der gespeicherten Serveradresse automatisch abrufen.
+  const status=document.getElementById('ollamaStatus');
+  if(status) status.textContent='Modelle werden geladen…';
+  void loadModels().then(models=>{
+    if(status && models && models.length){
+      status.textContent='Server erreichbar. '+models.length+' Modell(e) geladen: '+models.join(', ');
+      status.style.color='var(--green)';
+    } else if(status && (!models || !models.length)){
+      status.textContent='Keine Modelle gefunden. Serveradresse und Verbindung prüfen.';
+      status.style.color='var(--muted)';
+    }
+  });
 });
 </script>
 </body>
