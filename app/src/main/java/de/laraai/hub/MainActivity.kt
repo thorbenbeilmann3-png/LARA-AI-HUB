@@ -154,8 +154,8 @@ private fun LaraHubApp() {
     var automateFlowUri by remember { mutableStateOf(initialConfig.automateFlowUri) }
     var autoStartAutomate by remember { mutableStateOf(initialConfig.autoStartAutomate) }
     var apiKeyInput by remember { mutableStateOf("") }
-    val initialKeySaved = ApiKeyStore.hasSaved(context, initialConfig.providerId) ||
-        (initialConfig.providerId == "custom" && ApiKeyStore.hasSaved(context))
+    val initialKeySaved = ApiKeyStore.hasSaved(context, selectedProvider.id) ||
+        (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context))
     var hasSavedApiKey by remember { mutableStateOf(initialKeySaved) }
     var apiKeyStatus by remember {
         mutableStateOf(
