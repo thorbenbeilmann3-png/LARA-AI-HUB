@@ -60,7 +60,7 @@ private fun nowLabel(): String = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GER
 @Composable
 private fun LaraHubApp() {
     val context = LocalContext.current
-    var endpoint by remember { mutableStateOf("http://127.0.0.1:12434/v1/chat/completions") }
+    var endpoint by remember { mutableStateOf("http://10.179.130.230:12434/v1/chat/completions") }
     var model by remember { mutableStateOf("qwen2.5-0.5b-instruct-q4_k_m") }
     var apiKeyInput by remember { mutableStateOf("") }
     var hasSavedApiKey by remember { mutableStateOf(ApiKeyStore.hasSaved(context)) }
