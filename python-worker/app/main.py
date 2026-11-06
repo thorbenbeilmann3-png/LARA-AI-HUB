@@ -17,7 +17,7 @@ app = FastAPI(title="LARA Control Plane", version="0.2.0")
 
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    provider: str = Field(pattern="^(gemini|ollama)$")
+    provider: str = Field(pattern="^(openai|gemini|ollama)$")
     model: str = Field(min_length=1, max_length=120)
     prompt: str = Field(min_length=1, max_length=12000)
 
@@ -48,7 +48,7 @@ async def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "python_version": platform.python_version(),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),\n        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
         "ollama_configured": bool(os.getenv("OLLAMA_BASE_URL")),
         "automation": "registered tasks only; bearer token required",
     }
@@ -58,6 +58,33 @@ async def health() -> dict[str, Any]:
 async def chat(request: ChatRequest) -> dict[str, str]:
     timeout = httpx.Timeout(45.0, connect=8.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
+        if request.provider == "openai":
+            key = os.getenv("OPENAI_API_KEY")
+            if not key:
+                raise HTTPException(503, "OpenAI API key is not configured on the server")
+            try:
+                response = await client.post(
+                    "https://api.openai.com/v1/responses",
+                    headers={"Authorization": f"Bearer {key}"},
+                    json={"model": request.model, "input": request.prompt},
+                )
+                response.raise_for_status()
+                data = response.json()
+                output_parts = []
+                for item in data.get("output", []):
+                    if item.get("type") == "message":
+                        for part in item.get("content", []):
+                            if part.get("type") == "output_text" and isinstance(part.get("text"), str):
+                                output_parts.append(part["text"])
+                answer = "\n".join(output_parts).strip()
+                if not answer:
+                    raise HTTPException(502, "OpenAI returned no text output")
+                return {"provider": "openai", "model": request.model, "answer": answer}
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(502, f"OpenAI request failed with HTTP {exc.response.status_code}") from exc
+            except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
+                raise HTTPException(502, f"OpenAI request failed: {type(exc).__name__}") from exc
+
         if request.provider == "gemini":
             key = os.getenv("GEMINI_API_KEY")
             if not key:
