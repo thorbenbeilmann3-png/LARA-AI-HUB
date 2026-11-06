@@ -62,6 +62,9 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(status, 404)
         self.assertEqual(body["error"], "not_found")
 
+    def test_server_binds_to_loopback_only(self):
+        self.assertEqual(self.server.server_address[0], "127.0.0.1")
+
     def test_token_is_persisted(self):
         token2, created2 = load_or_create_token(self.home)
         self.assertFalse(created2)
