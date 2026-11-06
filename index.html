@@ -251,6 +251,8 @@ footer{color:var(--muted);font-size:11px;padding:25px 0}
 
 <script>
 let availableModels = [];
+let chatHistory = [];
+let preferredModel = '';
 
 function showPage(id,button){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -270,6 +272,15 @@ function getOllamaUrl(){
 function getSelectedModel(){
   const sel=document.getElementById('modelSelect');
   return sel ? sel.value.trim() : '';
+}
+
+function extractModelNames(data){
+  if(Array.isArray(data?.data)){
+    return data.data.map(item=>item?.id).filter(name=>typeof name==='string' && name.trim());
+  }
+  const models=data?.models || data?.tags || [];
+  if(!Array.isArray(models)) return [];
+  return models.map(item=>typeof item==='string' ? item : (item?.name || item?.model || item?.id)).filter(name=>typeof name==='string' && name.trim());
 }
 
 function setModelOptions(models){
@@ -306,18 +317,15 @@ async function loadModels(){
       throw new Error('API-Fehler '+response.status+': '+errText);
     }
     const data=await response.json();
-    const models=data.models || data.tags || [];
-    const names=models.map(m=>m.name||m).filter(Boolean);
+    const names=extractModelNames(data);
     availableModels=names;
     setModelOptions(names);
     if(names.length>0){
-      // Erstes Modell vorauswählen, wenn keines gespeichert
-      const saved=localStorage.getItem('lara_ollama_model');
-      if(!saved || !names.includes(saved)){
-        selValue=names[0];
-        document.getElementById('modelSelect').value=names[0];
-        localStorage.setItem('lara_ollama_model',names[0]);
-      }
+      const saved=preferredModel || localStorage.getItem('lara_ollama_model');
+      const selected=saved && names.includes(saved) ? saved : names[0];
+      document.getElementById('modelSelect').value=selected;
+      preferredModel=selected;
+      localStorage.setItem('lara_ollama_model',selected);
     }
     return names;
   }catch(err){
@@ -358,6 +366,7 @@ async function sendMessage(){
   userMsg.textContent=value;
   box.appendChild(userMsg);
   input.value='';
+  chatHistory.push({role:'user',content:value});
   box.scrollTop=box.scrollHeight;
 
   const loading=document.getElementById('chatLoading');
@@ -378,7 +387,7 @@ async function sendMessage(){
       body:JSON.stringify({
         ollamaUrl:ollamaUrl,
         model:model,
-        messages:[{role:'user',content:value}]
+        messages:chatHistory
       })
     });
 
@@ -397,7 +406,9 @@ async function sendMessage(){
       reply='Antwort konnte nicht verarbeitet werden.';
     }
     botMsg.textContent=reply;
+    chatHistory.push({role:'assistant',content:reply});
   }catch(err){
+    chatHistory.pop();
     botMsg.remove();
     showChatError('Verbindung fehlgeschlagen: '+err.message+'. Bitte Ollama-Adresse und Server prüfen.');
   } finally{
@@ -430,16 +441,18 @@ async function testOllama(){
       throw new Error('HTTP '+response.status+': '+errText);
     }
     const data=await response.json();
-    const models=data.models || data.tags || [];
-    const names=models.map(m=>m.name||m).filter(Boolean);
+    const names=extractModelNames(data);
     availableModels=names;
     setModelOptions(names);
     let msg='Server erreichbar. '+names.length+' Modell(e) gefunden: '+names.join(', ');
     if(names.length>0){
-      msg+='. Erstes Modell vorausgewählt.';
+      const saved=preferredModel || localStorage.getItem('lara_ollama_model');
+      const selected=saved && names.includes(saved) ? saved : names[0];
+      msg+='. Ausgewählt: '+selected;
       const sel=document.getElementById('modelSelect');
-      if(sel) sel.value=names[0];
-      localStorage.setItem('lara_ollama_model',names[0]);
+      if(sel) sel.value=selected;
+      preferredModel=selected;
+      localStorage.setItem('lara_ollama_model',selected);
     }
     status.textContent=msg;
     status.style.color='var(--green)';
@@ -501,6 +514,7 @@ function saveOllamaSettings(){
 function loadSettings(){
   const savedOllamaUrl=localStorage.getItem('lara_ollama_url');
   const savedModel=localStorage.getItem('lara_ollama_model');
+  preferredModel=savedModel || '';
   const savedApiUrl=localStorage.getItem('lara_api_url');
 
   if(savedOllamaUrl){
@@ -512,7 +526,13 @@ function loadSettings(){
   // Modell wird nach dem Laden der Liste gesetzt (siehe loadModels)
 }
 
-window.addEventListener('DOMContentLoaded',loadSettings);
+window.addEventListener('DOMContentLoaded',()=>{
+  loadSettings();
+  document.getElementById('modelSelect').addEventListener('change',event=>{
+    preferredModel=event.target.value;
+    if(preferredModel) localStorage.setItem('lara_ollama_model',preferredModel);
+  });
+});
 </script>
 </body>
 </html>
