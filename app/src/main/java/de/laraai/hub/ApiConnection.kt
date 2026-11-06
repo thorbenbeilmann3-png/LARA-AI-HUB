@@ -53,9 +53,13 @@ internal object ApiConnection {
         .callTimeout(130, TimeUnit.SECONDS)
         .build()
 
-    // Compatibility entry point for older callers and existing Ollama installs.
+    // Preserve the original generic endpoint behavior for older app versions.
     suspend fun discover(context: Context, endpoint: String): ApiDiscovery =
-        discover(context, AiProvider.OLLAMA, endpoint)
+        withContext(Dispatchers.IO) {
+            val root = rootUrl(endpoint, AiProvider.CUSTOM)
+            val apiKey = loadLegacyApiKey(context, root)
+            discoverOllama(root, apiKey)
+        }
 
     suspend fun discover(
         context: Context,
@@ -83,14 +87,18 @@ internal object ApiConnection {
         ApiDiscovery(ApiMode.OPENAI_COMPATIBLE, models)
     }
 
-    // Compatibility entry point for the original single-endpoint UI.
+    // Preserve the original single-endpoint behavior and legacy credential.
     suspend fun chat(
         context: Context,
         endpoint: String,
         model: String,
         prompt: String,
         mode: ApiMode
-    ): String = chat(context, AiProvider.OLLAMA, endpoint, model, prompt, mode)
+    ): String = withContext(Dispatchers.IO) {
+        val root = rootUrl(endpoint, AiProvider.CUSTOM)
+        val apiKey = loadLegacyApiKey(context, root)
+        chatOllama(root, model, prompt, mode, apiKey)
+    }
 
     suspend fun chat(
         context: Context,
@@ -104,7 +112,7 @@ internal object ApiConnection {
         require(prompt.isNotBlank()) { "Die Nachricht darf nicht leer sein." }
 
         if (provider == AiProvider.OLLAMA) {
-            return@withContext chatOllama(endpoint, model, prompt, mode)
+            return@withContext chatOllama(endpoint, model, prompt, mode, null)
         }
 
         val root = rootUrl(endpoint, provider)
@@ -180,7 +188,8 @@ internal object ApiConnection {
         endpoint: String,
         model: String,
         prompt: String,
-        mode: ApiMode
+        mode: ApiMode,
+        apiKey: String?
     ): String {
         val root = rootUrl(endpoint, AiProvider.OLLAMA)
         val payload = JSONObject()
@@ -194,6 +203,7 @@ internal object ApiConnection {
         val request = Request.Builder()
             .url(url)
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .apply { if (!apiKey.isNullOrBlank()) header("Authorization", "Bearer $apiKey") }
             .build()
         val json = JSONObject(execute(request))
         return when (mode) {
@@ -306,6 +316,14 @@ internal object ApiConnection {
                 .removePrefix("models/")
                 .takeIf { it.isNotBlank() }
         }
+    }
+
+    private fun loadLegacyApiKey(context: Context, root: String): String? {
+        val key = ApiKeyStore.load(context)
+        if (!key.isNullOrBlank() && !root.startsWith("https://", ignoreCase = true)) {
+            error("API-Schlüssel werden ausschließlich über HTTPS übertragen. Für lokales Ollama das Schlüssel-Feld leer lassen.")
+        }
+        return key
     }
 
     private fun loadProviderApiKey(
