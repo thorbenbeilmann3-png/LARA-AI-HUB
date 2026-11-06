@@ -346,7 +346,8 @@ internal object ApiConnection {
         val key = ApiKeyStore.load(context, provider.id)
             ?: if (provider == AiProvider.CUSTOM) ApiKeyStore.load(context) else null
         if (provider.requiresApiKey && key.isNullOrBlank()) {
-            error("Für ${provider.label} ist noch kein API-Schlüssel gespeichert.")
+            val credentialName = if (provider == AiProvider.OPENCLAW) "Gateway Token" else "API-Schlüssel"
+            error("Für ${provider.label} ist noch kein $credentialName gespeichert.")
         }
         if (
             !key.isNullOrBlank() &&
