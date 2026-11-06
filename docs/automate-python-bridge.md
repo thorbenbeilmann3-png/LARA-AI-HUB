@@ -61,12 +61,15 @@ A successful result is HTTP 200 and JSON containing `"result":"Hallo von Automat
 
 ## Tests
 
-Run on a desktop or in the Python app:
+Run from the bridge directory on a desktop or in the Python app:
 
 ```bash
+cd tools/android-python-bridge
 python -m unittest -v
 python -m py_compile lara_bridge.py
 ```
+
+The GitHub Actions workflow also runs these tests before building the Android APK.
 
 The automated tests cover token persistence, authenticated health, successful echo, rejection of unauthenticated requests, and rejection of unsupported paths/tasks.
 
