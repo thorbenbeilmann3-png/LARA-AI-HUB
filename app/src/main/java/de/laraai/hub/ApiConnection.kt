@@ -24,6 +24,7 @@ internal enum class AiProvider(
     GEMINI("gemini", "Google · Gemini", "https://generativelanguage.googleapis.com/v1beta", true),
     OPENROUTER("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", true),
     CEREBRAS("cerebras", "Cerebras", "https://api.cerebras.ai/v1", true),
+    OPENCLAW("openclaw", "OpenClaw · Gateway", "", true),
     CUSTOM("custom", "Eigener OpenAI-kompatibler Server", "", false);
 
     companion object {
@@ -93,7 +94,8 @@ internal object ApiConnection {
         endpoint: String,
         model: String,
         prompt: String,
-        mode: ApiMode
+        mode: ApiMode,
+        conversationId: String? = null
     ): String = withContext(Dispatchers.IO) {
         val root = rootUrl(endpoint, AiProvider.CUSTOM)
         val apiKey = loadLegacyApiKey(context, root)
@@ -123,7 +125,10 @@ internal object ApiConnection {
             AiProvider.OPENAI,
             AiProvider.OPENROUTER,
             AiProvider.CEREBRAS,
-            AiProvider.CUSTOM -> openAiCompatibleChatRequest(root, apiKey, model, prompt)
+            AiProvider.OPENCLAW,
+            AiProvider.CUSTOM -> openAiCompatibleChatRequest(
+                root, apiKey, model, prompt, provider, conversationId
+            )
             AiProvider.OLLAMA -> error("Interner Ollama-Routingfehler.")
         }
         val response = JSONObject(execute(request))
@@ -217,12 +222,17 @@ internal object ApiConnection {
         root: String,
         apiKey: String?,
         model: String,
-        prompt: String
+        prompt: String,
+        provider: AiProvider,
+        conversationId: String?
     ): Request {
         val payload = JSONObject()
             .put("model", model)
             .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
             .put("stream", false)
+        if (provider == AiProvider.OPENCLAW && !conversationId.isNullOrBlank()) {
+            payload.put("user", "conv:$conversationId")
+        }
         return Request.Builder()
             .url("$root/v1/chat/completions")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
@@ -290,6 +300,7 @@ internal object ApiConnection {
             AiProvider.OPENAI,
             AiProvider.OPENROUTER,
             AiProvider.CEREBRAS,
+            AiProvider.OPENCLAW,
             AiProvider.CUSTOM -> if (!apiKey.isNullOrBlank()) {
                 builder.header("Authorization", "Bearer $apiKey")
             }
@@ -337,10 +348,28 @@ internal object ApiConnection {
         if (provider.requiresApiKey && key.isNullOrBlank()) {
             error("Für ${provider.label} ist noch kein API-Schlüssel gespeichert.")
         }
-        if (!key.isNullOrBlank() && !root.startsWith("https://", ignoreCase = true)) {
-            error("API-Schlüssel werden ausschließlich über HTTPS übertragen.")
+        if (
+            !key.isNullOrBlank() &&
+            !root.startsWith("https://", ignoreCase = true) &&
+            !(provider == AiProvider.OPENCLAW && isPrivateGatewayEndpoint(root))
+        ) {
+            error("Zugangsdaten werden nur über HTTPS übertragen. Für OpenClaw ist HTTP ausschließlich im privaten LAN oder auf localhost erlaubt.")
         }
         return key
+    }
+
+    private fun isPrivateGatewayEndpoint(endpoint: String): Boolean {
+        val host = runCatching { java.net.URI(endpoint).host?.lowercase() }.getOrNull() ?: return false
+        if (host == "localhost" || host == "127.0.0.1" || host == "::1" || host.endsWith(".local")) {
+            return true
+        }
+        if (host.startsWith("10.") || host.startsWith("192.168.")) return true
+        val parts = host.split(".")
+        if (parts.size == 4 && parts[0] == "172") {
+            val second = parts[1].toIntOrNull()
+            if (second != null && second in 16..31) return true
+        }
+        return host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")
     }
 
     private fun rootUrl(endpoint: String, provider: AiProvider): String {
