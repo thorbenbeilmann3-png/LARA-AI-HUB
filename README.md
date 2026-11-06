@@ -7,12 +7,13 @@ Android-first AI hub starter project. The first milestone is a native Android ch
 - Android app shell with Chat, Postfach, ARENA and PC tabs
 - Configurable OpenAI-compatible chat-completions endpoint and model name
 - GitHub Actions workflow that builds a debug APK and stores it as a workflow artifact
+- Experimental Android Python bridge proof of concept: authenticated, loopback-only health and echo requests from Automate (see [setup guide](docs/automate-python-bridge.md))
 
 ## Not implemented yet
 
-Persistent inbox, multiple provider adapters (OpenAI/Anthropic), API-key vault, ARENA tournament integration, Python execution worker, MCP/Skills management, GitHub operations from inside the app, Windows remote agent and Android automation.
+Persistent inbox, multiple provider adapters (OpenAI/Anthropic), API-key vault, ARENA tournament integration, arbitrary/sandboxed Python execution, MCP/Skills management, GitHub operations from inside the app, Windows remote agent and native Android automation integration.
 
-These are planned milestones, not currently working features.
+The Python bridge is only a connectivity test. It does not execute arbitrary code and has not yet been verified on a physical Android device.
 
 ## Local development
 
