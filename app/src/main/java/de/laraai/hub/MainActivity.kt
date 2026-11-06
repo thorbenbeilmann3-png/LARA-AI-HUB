@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
 private data class ChatLine(val role: String, val text: String, val time: String)
 
 private data class LaraConfig(
+    val providerId: String,
     val endpoint: String,
     val model: String,
     val automateFlowUri: String,
@@ -44,16 +45,30 @@ private data class LaraConfig(
 
 private fun loadConfig(context: Context): LaraConfig {
     val prefs = context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE)
+    val defaultEndpoint = "http://10.179.130.230:12434/"
+    val endpoint = prefs.getString("endpoint", defaultEndpoint) ?: defaultEndpoint
+    val inferredProvider = if (
+        endpoint.startsWith("https://", ignoreCase = true) && ApiKeyStore.hasSaved(context)
+    ) "custom" else "ollama"
     return LaraConfig(
-        endpoint = prefs.getString("endpoint", "http://10.179.130.230:12434/") ?: "http://10.179.130.230:12434/",
+        providerId = prefs.getString("provider_id", inferredProvider) ?: inferredProvider,
+        endpoint = endpoint,
         model = prefs.getString("model", "") ?: "",
         automateFlowUri = prefs.getString("automate_flow_uri", "") ?: "",
         autoStartAutomate = prefs.getBoolean("auto_start_automate", false)
     )
 }
 
-private fun saveConfig(context: Context, endpoint: String, model: String, flowUri: String, autoStartAutomate: Boolean) {
+private fun saveConfig(
+    context: Context,
+    providerId: String,
+    endpoint: String,
+    model: String,
+    flowUri: String,
+    autoStartAutomate: Boolean
+) {
     context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE).edit()
+        .putString("provider_id", providerId)
         .putString("endpoint", endpoint.trim())
         .putString("model", model.trim())
         .putString("automate_flow_uri", flowUri.trim())
@@ -132,16 +147,24 @@ private fun openAutomate(context: Context, flowUri: String): String {
 private fun LaraHubApp() {
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
+    var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
+    var providerMenuExpanded by remember { mutableStateOf(false) }
     var endpoint by remember { mutableStateOf(initialConfig.endpoint) }
     var model by remember { mutableStateOf(initialConfig.model) }
     var automateFlowUri by remember { mutableStateOf(initialConfig.automateFlowUri) }
     var autoStartAutomate by remember { mutableStateOf(initialConfig.autoStartAutomate) }
     var apiKeyInput by remember { mutableStateOf("") }
-    var hasSavedApiKey by remember { mutableStateOf(ApiKeyStore.hasSaved(context)) }
+    val initialKeySaved = ApiKeyStore.hasSaved(context, initialConfig.providerId) ||
+        (initialConfig.providerId == "custom" && ApiKeyStore.hasSaved(context))
+    var hasSavedApiKey by remember { mutableStateOf(initialKeySaved) }
     var apiKeyStatus by remember {
         mutableStateOf(
-            if (ApiKeyStore.hasSaved(context)) "API-Schlüssel ist verschlüsselt auf diesem Gerät gespeichert."
-            else "Kein API-Schlüssel gespeichert. Für lokales Ollama normalerweise leer lassen."
+            when {
+                initialKeySaved -> "Zugangsdaten sind verschlüsselt auf diesem Gerät gespeichert."
+                selectedProvider.requiresApiKey -> "Für diesen Anbieter muss ein API-Schlüssel gespeichert werden."
+                selectedProvider == AiProvider.CUSTOM -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
+                else -> "Ollama benötigt normalerweise keinen API-Schlüssel."
+            }
         )
     }
     var prompt by remember { mutableStateOf("") }
@@ -161,23 +184,37 @@ private fun LaraHubApp() {
     }
 
     fun persistConfig() {
-        saveConfig(context, endpoint, model, automateFlowUri, autoStartAutomate)
+        saveConfig(context, selectedProvider.id, endpoint, model, automateFlowUri, autoStartAutomate)
+    }
+
+    fun refreshCredentialStatus(provider: AiProvider) {
+        val saved = ApiKeyStore.hasSaved(context, provider.id) ||
+            (provider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context))
+        hasSavedApiKey = saved
+        apiKeyStatus = when {
+            saved -> "Zugangsdaten sind verschlüsselt auf diesem Gerät gespeichert."
+            provider.requiresApiKey -> "Für diesen Anbieter muss ein API-Schlüssel gespeichert werden."
+            provider == AiProvider.CUSTOM -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
+            else -> "Ollama benötigt normalerweise keinen API-Schlüssel."
+        }
     }
 
     fun checkConnection() {
         if (checking || busy) return
         checking = true
-        status = "Prüfe Server und suche verfügbare Modelle …"
+        status = "Prüfe ${selectedProvider.label} und suche verfügbare Modelle …"
         scope.launch {
             try {
-                val result = ApiConnection.discover(context, endpoint)
+                val result = ApiConnection.discover(context, selectedProvider, endpoint)
                 apiMode = result.mode
                 availableModels = result.models
                 if (model.isBlank() || (result.models.isNotEmpty() && model !in result.models)) {
                     model = result.models.firstOrNull().orEmpty()
                 }
                 persistConfig()
-                val apiLabel = if (result.mode == ApiMode.OLLAMA_NATIVE) "Ollama API" else "OpenAI-kompatible API"
+                val apiLabel = if (selectedProvider == AiProvider.OLLAMA) {
+                    if (result.mode == ApiMode.OLLAMA_NATIVE) "Ollama API" else "Ollama · OpenAI-kompatibel"
+                } else selectedProvider.label
                 status = "Verbunden: $apiLabel · ${result.models.size} Modell(e) gefunden"
             } catch (e: Exception) {
                 status = "Verbindung fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
@@ -265,16 +302,16 @@ private fun LaraHubApp() {
                                     status = "Verbinde und sende Anfrage …"
                                     scope.launch {
                                         try {
-                                            val discovery = ApiConnection.discover(context, endpoint)
+                                            val discovery = ApiConnection.discover(context, selectedProvider, endpoint)
                                             apiMode = discovery.mode
                                             if (availableModels != discovery.models) availableModels = discovery.models
                                             val selectedModel = model.ifBlank { discovery.models.firstOrNull().orEmpty() }
                                             if (selectedModel.isBlank()) error("Der Server meldet keine Modelle. Bitte Modellnamen prüfen.")
                                             if (model.isBlank()) model = selectedModel
-                                            val answer = ApiConnection.chat(context, endpoint, selectedModel, question, discovery.mode)
+                                            val answer = ApiConnection.chat(context, selectedProvider, endpoint, selectedModel, question, discovery.mode)
                                             persistConfig()
                                             addMessage("LARA / $selectedModel", answer)
-                                            val apiLabel = if (discovery.mode == ApiMode.OLLAMA_NATIVE) "Ollama" else "OpenAI-kompatible API"
+                                            val apiLabel = if (selectedProvider == AiProvider.OLLAMA) "Ollama" else selectedProvider.label
                                             status = "Antwort erhalten · $apiLabel"
                                         } catch (e: Exception) {
                                             status = "Fehler: ${e.message ?: "Verbindung fehlgeschlagen"}"
@@ -336,13 +373,51 @@ private fun LaraHubApp() {
 
                     3 -> {
                         Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge)
-                        Text("Ollama / OpenAI-kompatibler Server")
+                        Text("KI-Anbieter auswählen", style = MaterialTheme.typography.titleMedium)
+                        Box {
+                            OutlinedButton(
+                                onClick = { providerMenuExpanded = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text(selectedProvider.label) }
+                            DropdownMenu(
+                                expanded = providerMenuExpanded,
+                                onDismissRequest = { providerMenuExpanded = false }
+                            ) {
+                                AiProvider.entries.forEach { provider ->
+                                    DropdownMenuItem(
+                                        text = { Text(provider.label) },
+                                        onClick = {
+                                            providerMenuExpanded = false
+                                            if (provider != selectedProvider) {
+                                                selectedProvider = provider
+                                                endpoint = provider.defaultEndpoint
+                                                model = ""
+                                                apiKeyInput = ""
+                                                availableModels = emptyList()
+                                                refreshCredentialStatus(provider)
+                                                saveConfig(
+                                                    context,
+                                                    provider.id,
+                                                    endpoint,
+                                                    model,
+                                                    automateFlowUri,
+                                                    autoStartAutomate
+                                                )
+                                                status = "${provider.label} ausgewählt. Bitte Verbindung testen."
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                         OutlinedTextField(
                             value = endpoint,
                             onValueChange = { endpoint = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Server-Adresse") },
-                            placeholder = { Text("http://10.179.130.230:12434/") },
+                            label = { Text("API- / Server-Adresse") },
+                            placeholder = {
+                                Text(selectedProvider.defaultEndpoint.ifBlank { "https://dein-server.example/v1" })
+                            },
                             singleLine = true
                         )
                         OutlinedTextField(
@@ -362,47 +437,56 @@ private fun LaraHubApp() {
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
                         Divider()
-                        Text("API-Schlüssel", style = MaterialTheme.typography.titleMedium)
-                        OutlinedTextField(
-                            value = apiKeyInput,
-                            onValueChange = { apiKeyInput = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("API-Schlüssel eingeben") },
-                            visualTransformation = PasswordVisualTransformation(),
-                            singleLine = true
-                        )
-                        Text(apiKeyStatus, style = MaterialTheme.typography.bodySmall)
-                        Button(
-                            onClick = {
-                                try {
-                                    ApiKeyStore.save(context, apiKeyInput)
-                                    apiKeyInput = ""
-                                    hasSavedApiKey = true
-                                    apiKeyStatus = "API-Schlüssel sicher gespeichert und wird wiederverwendet."
-                                } catch (e: Exception) {
-                                    apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
-                                }
-                            },
-                            enabled = apiKeyInput.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("API-Schlüssel sicher speichern") }
-                        TextButton(
-                            onClick = {
-                                try {
-                                    ApiKeyStore.clear(context)
-                                    apiKeyInput = ""
-                                    hasSavedApiKey = false
-                                    apiKeyStatus = "Gespeicherter API-Schlüssel entfernt."
-                                } catch (e: Exception) {
-                                    apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
-                                }
-                            },
-                            enabled = hasSavedApiKey,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Gespeicherten Schlüssel entfernen") }
+                        if (selectedProvider.requiresApiKey || selectedProvider == AiProvider.CUSTOM) {
+                            Text("Zugangsdaten · ${selectedProvider.label}", style = MaterialTheme.typography.titleMedium)
+                            OutlinedTextField(
+                                value = apiKeyInput,
+                                onValueChange = { apiKeyInput = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("API-Schlüssel eingeben") },
+                                visualTransformation = PasswordVisualTransformation(),
+                                singleLine = true
+                            )
+                            Text(apiKeyStatus, style = MaterialTheme.typography.bodySmall)
+                            Button(
+                                onClick = {
+                                    try {
+                                        ApiKeyStore.save(context, selectedProvider.id, apiKeyInput)
+                                        if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
+                                            ApiKeyStore.clear(context)
+                                        }
+                                        apiKeyInput = ""
+                                        refreshCredentialStatus(selectedProvider)
+                                    } catch (e: Exception) {
+                                        apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
+                                    }
+                                },
+                                enabled = apiKeyInput.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Schlüssel sicher speichern") }
+                            TextButton(
+                                onClick = {
+                                    try {
+                                        ApiKeyStore.clear(context, selectedProvider.id)
+                                        if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
+                                            ApiKeyStore.clear(context)
+                                        }
+                                        apiKeyInput = ""
+                                        refreshCredentialStatus(selectedProvider)
+                                    } catch (e: Exception) {
+                                        apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
+                                    }
+                                },
+                                enabled = hasSavedApiKey,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Gespeicherten Schlüssel entfernen") }
+                        } else {
+                            Text("Ollama läuft lokal und benötigt normalerweise keinen API-Schlüssel.")
+                        }
                         Text(
-                            "Verschlüsselung: AES-GCM; Geräteschlüssel im Android Keystore. " +
-                                "Ein API-Schlüssel wird nur über HTTPS übertragen. Für lokales Ollama das Feld leer lassen.",
+                            "Sicherheit: AES-GCM mit Geräteschlüssel im Android Keystore. " +
+                                "Schlüssel bleiben lokal gespeichert und werden nur über HTTPS übertragen. " +
+                                "Für die lokale Ollama-Verbindung bleibt das Schlüsselfeld leer.",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Divider()
