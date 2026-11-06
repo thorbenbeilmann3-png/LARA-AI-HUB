@@ -1,6 +1,10 @@
 package de.laraai.hub
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,13 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -35,45 +33,112 @@ class MainActivity : ComponentActivity() {
 
 private data class ChatLine(val role: String, val text: String, val time: String)
 
+private data class LaraConfig(
+    val endpoint: String,
+    val model: String,
+    val automateFlowUri: String
+)
+
+private fun loadConfig(context: Context): LaraConfig {
+    val prefs = context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE)
+    return LaraConfig(
+        endpoint = prefs.getString("endpoint", "http://10.179.130.230:12434/") ?: "http://10.179.130.230:12434/",
+        model = prefs.getString("model", "") ?: "",
+        automateFlowUri = prefs.getString("automate_flow_uri", "") ?: ""
+    )
+}
+
+private fun saveConfig(context: Context, endpoint: String, model: String, flowUri: String) {
+    context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE).edit()
+        .putString("endpoint", endpoint.trim())
+        .putString("model", model.trim())
+        .putString("automate_flow_uri", flowUri.trim())
+        .apply()
+}
+
 private fun loadMessages(context: Context): List<ChatLine> {
-    val raw = context.getSharedPreferences("lara_hub", Context.MODE_PRIVATE).getString("mailbox", "[]") ?: "[]"
+    val raw = context.getSharedPreferences("lara_hub", Context.MODE_PRIVATE)
+        .getString("mailbox", "[]") ?: "[]"
     return try {
         val array = JSONArray(raw)
-        (0 until array.length()).map { i ->
-            val item = array.getJSONObject(i)
+        (0 until array.length()).map { index ->
+            val item = array.getJSONObject(index)
             ChatLine(item.optString("role"), item.optString("text"), item.optString("time"))
         }
-    } catch (_: Exception) { emptyList() }
+    } catch (_: Exception) {
+        emptyList()
+    }
 }
 
 private fun saveMessages(context: Context, messages: List<ChatLine>) {
     val array = JSONArray()
     messages.takeLast(500).forEach { entry ->
-        array.put(JSONObject().put("role", entry.role).put("text", entry.text).put("time", entry.time))
+        array.put(
+            JSONObject()
+                .put("role", entry.role)
+                .put("text", entry.text)
+                .put("time", entry.time)
+        )
     }
-    context.getSharedPreferences("lara_hub", Context.MODE_PRIVATE).edit().putString("mailbox", array.toString()).apply()
+    context.getSharedPreferences("lara_hub", Context.MODE_PRIVATE)
+        .edit().putString("mailbox", array.toString()).apply()
 }
 
-private fun nowLabel(): String = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMANY).format(Date())
+private fun nowLabel(): String =
+    SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMANY).format(Date())
+
+private fun copyText(context: Context, text: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("LARA", text))
+}
+
+private fun openAutomate(context: Context, flowUri: String): String {
+    return try {
+        if (flowUri.isNotBlank()) {
+            require(flowUri.startsWith("content://com.llamalab.automate.provider/flows/")) {
+                "Die Flow-Adresse muss aus dem Flow-Beginnungsblock von Automate stammen."
+            }
+            val intent = Intent("com.llamalab.automate.intent.action.START_FLOW").apply {
+                setPackage("com.llamalab.automate")
+                data = Uri.parse(flowUri)
+            }
+            context.startActivity(intent)
+            "Automate-Flow wurde an Android übergeben."
+        } else {
+            val launchIntent = context.packageManager.getLaunchIntentForPackage("com.llamalab.automate")
+                ?: error("Automate ist auf diesem Gerät nicht startbar.")
+            context.startActivity(launchIntent)
+            "Automate geöffnet. Trage anschließend die Flow-Adresse in LARA ein."
+        }
+    } catch (e: Exception) {
+        "Automate konnte nicht gestartet werden: ${e.message ?: "unbekannter Fehler"}"
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LaraHubApp() {
     val context = LocalContext.current
-    var endpoint by remember { mutableStateOf("http://10.179.130.230:12434/v1/chat/completions") }
-    var model by remember { mutableStateOf("qwen2.5-0.5b-instruct-q4_k_m") }
+    val initialConfig = remember { loadConfig(context) }
+    var endpoint by remember { mutableStateOf(initialConfig.endpoint) }
+    var model by remember { mutableStateOf(initialConfig.model) }
+    var automateFlowUri by remember { mutableStateOf(initialConfig.automateFlowUri) }
     var apiKeyInput by remember { mutableStateOf("") }
     var hasSavedApiKey by remember { mutableStateOf(ApiKeyStore.hasSaved(context)) }
     var apiKeyStatus by remember {
         mutableStateOf(
-            if (ApiKeyStore.hasSaved(context)) "API-Schlüssel ist auf diesem Gerät verschlüsselt gespeichert."
-            else "Kein API-Schlüssel gespeichert."
+            if (ApiKeyStore.hasSaved(context)) "API-Schlüssel ist verschlüsselt auf diesem Gerät gespeichert."
+            else "Kein API-Schlüssel gespeichert. Für lokales Ollama normalerweise leer lassen."
         )
     }
     var prompt by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Bereit – Verbindung wird beim Senden geprüft") }
-    var selectedTab by remember { mutableStateOf(0) }
+    var checking by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("Noch nicht verbunden – Verbindung zuerst testen.") }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var apiMode by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
+    var availableModels by remember { mutableStateOf(emptyList<String>()) }
+    var showModelPicker by remember { mutableStateOf(false) }
     val lines = remember { mutableStateListOf<ChatLine>().apply { addAll(loadMessages(context)) } }
     val scope = rememberCoroutineScope()
 
@@ -82,14 +147,45 @@ private fun LaraHubApp() {
         saveMessages(context, lines)
     }
 
+    fun persistConfig() {
+        saveConfig(context, endpoint, model, automateFlowUri)
+    }
+
+    fun checkConnection() {
+        if (checking || busy) return
+        checking = true
+        status = "Prüfe Server und suche verfügbare Modelle …"
+        scope.launch {
+            try {
+                val result = ApiConnection.discover(context, endpoint)
+                apiMode = result.mode
+                availableModels = result.models
+                if (model.isBlank() || (result.models.isNotEmpty() && model !in result.models)) {
+                    model = result.models.firstOrNull().orEmpty()
+                }
+                persistConfig()
+                val apiLabel = if (result.mode == ApiMode.OLLAMA_NATIVE) "Ollama API" else "OpenAI-kompatible API"
+                status = "Verbunden: $apiLabel · ${result.models.size} Modell(e) gefunden"
+            } catch (e: Exception) {
+                status = "Verbindung fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
+            } finally {
+                checking = false
+            }
+        }
+    }
+
     MaterialTheme {
         Scaffold(
-            topBar = { TopAppBar(title = {
-                Column {
-                    Text("LARA AI HUB")
-                    Text("Dein KI-Kontrollzentrum", style = MaterialTheme.typography.labelSmall)
-                }
-            }) },
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text("LARA AI HUB")
+                            Text("Lokale und externe KI-Zentrale", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                )
+            },
             bottomBar = {
                 NavigationBar {
                     listOf("Chat", "Postfach", "ARENA", "PC").forEachIndexed { index, label ->
@@ -103,69 +199,148 @@ private fun LaraHubApp() {
                 }
             }
         ) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 when (selectedTab) {
                     0 -> {
-                        Text(status, style = MaterialTheme.typography.bodySmall)
-                        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(lines.takeLast(80)) { entry ->
-                                Card { Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                                    Text("${entry.role} · ${entry.time}", style = MaterialTheme.typography.labelSmall)
-                                    Text(entry.text)
-                                } }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("KI-Chat", style = MaterialTheme.typography.titleLarge)
+                            TextButton(onClick = { checkConnection() }, enabled = !checking && !busy) {
+                                Text(if (checking) "Prüfe …" else "Verbindung testen")
                             }
                         }
-                        OutlinedTextField(prompt, { prompt = it }, Modifier.fillMaxWidth(), label = { Text("Nachricht an die KI") }, minLines = 2)
-                        Button(onClick = {
-                            val question = prompt.trim()
-                            if (question.isNotEmpty() && !busy) {
-                                prompt = ""
-                                addMessage("Du", question)
-                                busy = true
-                                status = "Anfrage wird gesendet …"
-                                scope.launch {
-                                    try {
-                                        val answer = callChatApi(context, endpoint, model, question)
-                                        addMessage("LARA / $model", answer)
-                                        status = "Antwort erhalten"
-                                    } catch (e: Exception) {
-                                        status = "Fehler: ${e.message ?: "Verbindung fehlgeschlagen"}"
-                                    } finally { busy = false }
+                        Text(status, style = MaterialTheme.typography.bodySmall)
+                        LazyColumn(
+                            Modifier.weight(1f).fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(lines.takeLast(80)) { entry ->
+                                Card {
+                                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("${entry.role} · ${entry.time}", style = MaterialTheme.typography.labelSmall)
+                                            TextButton(onClick = { copyText(context, entry.text) }) { Text("Kopieren") }
+                                        }
+                                        Text(entry.text)
+                                    }
                                 }
                             }
-                        }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                        }
+                        OutlinedTextField(
+                            value = prompt,
+                            onValueChange = { prompt = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Nachricht an die KI") },
+                            minLines = 2
+                        )
+                        Button(
+                            onClick = {
+                                val question = prompt.trim()
+                                if (question.isNotEmpty() && !busy) {
+                                    prompt = ""
+                                    addMessage("Du", question)
+                                    busy = true
+                                    status = "Verbinde und sende Anfrage …"
+                                    scope.launch {
+                                        try {
+                                            val discovery = ApiConnection.discover(context, endpoint)
+                                            apiMode = discovery.mode
+                                            if (availableModels != discovery.models) availableModels = discovery.models
+                                            val selectedModel = model.ifBlank { discovery.models.firstOrNull().orEmpty() }
+                                            if (selectedModel.isBlank()) error("Der Server meldet keine Modelle. Bitte Modellnamen prüfen.")
+                                            if (model.isBlank()) model = selectedModel
+                                            val answer = ApiConnection.chat(context, endpoint, selectedModel, question, discovery.mode)
+                                            persistConfig()
+                                            addMessage("LARA / $selectedModel", answer)
+                                            val apiLabel = if (discovery.mode == ApiMode.OLLAMA_NATIVE) "Ollama" else "OpenAI-kompatible API"
+                                            status = "Antwort erhalten · $apiLabel"
+                                        } catch (e: Exception) {
+                                            status = "Fehler: ${e.message ?: "Verbindung fehlgeschlagen"}"
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = !busy && !checking,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(if (busy) "Bitte warten …" else "Senden")
                         }
                     }
+
                     1 -> {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("KI-Postfach", style = MaterialTheme.typography.headlineSmall)
+                            Text("KI-Postfach", style = MaterialTheme.typography.titleLarge)
                             TextButton(onClick = { lines.clear(); saveMessages(context, lines) }) { Text("Leeren") }
                         }
-                        Text("Gespeicherter Ein- und Ausgang · lokal auf diesem Handy")
+                        Text("Ein- und Ausgang · lokal auf diesem Handy gespeichert")
                         if (lines.isEmpty()) {
-                            Text("Noch keine Nachrichten. Starte einen Chat – gesendete Fragen und KI-Antworten erscheinen hier.")
+                            Text("Noch keine Nachrichten. Gesendete Fragen und KI-Antworten erscheinen hier.")
                         } else {
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(lines.asReversed()) { entry ->
-                                    Card { Column(Modifier.fillMaxWidth().padding(12.dp)) {
-                                        Text(entry.role, style = MaterialTheme.typography.labelLarge)
-                                        Text(entry.time, style = MaterialTheme.typography.labelSmall)
-                                        Spacer(Modifier.height(4.dp))
-                                        Text(entry.text)
-                                    } }
+                                    Card {
+                                        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text(entry.role, style = MaterialTheme.typography.labelLarge)
+                                                TextButton(onClick = { copyText(context, entry.text) }) { Text("Kopieren") }
+                                            }
+                                            Text(entry.time, style = MaterialTheme.typography.labelSmall)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(entry.text)
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+
                     2 -> {
-                        Text("ARENA", style = MaterialTheme.typography.headlineSmall)
-                        Text("Wettkampfverwaltung folgt als eigener Ausbauschritt. Ein Match startet später nur mit mindestens zwei tatsächlich verfügbaren Modellen.")
+                        Text("ARENA", style = MaterialTheme.typography.titleLarge)
+                        Text("KI-Wettkampf · bis zu 30 Teilnehmerplätze")
+                        Card {
+                            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Wettkampfablauf", style = MaterialTheme.typography.titleMedium)
+                                Text("1. Aufgabe festlegen")
+                                Text("2. Verfügbare Modelle anonym gegeneinander antreten lassen")
+                                Text("3. Antworten vergleichen und bewerten")
+                                Text("4. Qualifikation und Finale ausführen")
+                                Text("5. Gewinner, Antwortqualität und Kosten dokumentieren")
+                            }
+                        }
+                        Text("Status: Die Arena-Oberfläche ist vorbereitet. Modellverwaltung, Mehrfachaufrufe und Wertung sind noch nicht implementiert.")
                     }
+
                     3 -> {
-                        Text("Verbindung", style = MaterialTheme.typography.headlineSmall)
-                        OutlinedTextField(endpoint, { endpoint = it }, Modifier.fillMaxWidth(), label = { Text("API-Endpunkt") })
-                        OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Modellname") })
+                        Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge)
+                        Text("Ollama / OpenAI-kompatibler Server")
+                        OutlinedTextField(
+                            value = endpoint,
+                            onValueChange = { endpoint = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Server-Adresse") },
+                            placeholder = { Text("http://10.179.130.230:12434/") },
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = model,
+                            onValueChange = { model = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Modellname") },
+                            singleLine = true
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { checkConnection() }, enabled = !checking && !busy) {
+                                Text(if (checking) "Prüfe …" else "Verbinden / Modelle laden")
+                            }
+                            if (availableModels.isNotEmpty()) {
+                                OutlinedButton(onClick = { showModelPicker = true }) { Text("Modell wählen") }
+                            }
+                        }
+                        Text(status, style = MaterialTheme.typography.bodySmall)
                         Divider()
                         Text("API-Schlüssel", style = MaterialTheme.typography.titleMedium)
                         OutlinedTextField(
@@ -183,21 +358,21 @@ private fun LaraHubApp() {
                                     ApiKeyStore.save(context, apiKeyInput)
                                     apiKeyInput = ""
                                     hasSavedApiKey = true
-                                    apiKeyStatus = "API-Schlüssel sicher gespeichert. Er wird beim nächsten Start wiederverwendet."
+                                    apiKeyStatus = "API-Schlüssel sicher gespeichert und wird wiederverwendet."
                                 } catch (e: Exception) {
                                     apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
                                 }
                             },
                             enabled = apiKeyInput.isNotBlank(),
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Schlüssel sicher speichern") }
+                        ) { Text("API-Schlüssel sicher speichern") }
                         TextButton(
                             onClick = {
                                 try {
                                     ApiKeyStore.clear(context)
                                     apiKeyInput = ""
                                     hasSavedApiKey = false
-                                    apiKeyStatus = "Gespeicherter API-Schlüssel wurde entfernt."
+                                    apiKeyStatus = "Gespeicherter API-Schlüssel entfernt."
                                 } catch (e: Exception) {
                                     apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
                                 }
@@ -206,43 +381,62 @@ private fun LaraHubApp() {
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Gespeicherten Schlüssel entfernen") }
                         Text(
-                            "Der Schlüssel wird mit AES-GCM verschlüsselt; der Geräteschlüssel bleibt im Android Keystore. " +
-                                "Er wird niemals im Quellcode oder Nachrichtenarchiv abgelegt. " +
-                                "Für lokales Ollama normalerweise leer lassen. Ein gespeicherter Schlüssel wird nur über HTTPS übertragen.",
+                            "Verschlüsselung: AES-GCM; Geräteschlüssel im Android Keystore. " +
+                                "Ein API-Schlüssel wird nur über HTTPS übertragen. Für lokales Ollama das Feld leer lassen.",
                             style = MaterialTheme.typography.bodySmall
                         )
+                        Divider()
+                        Text("Automate von LlamaLab", style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(
+                            value = automateFlowUri,
+                            onValueChange = { automateFlowUri = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Flow-Adresse aus Automate (optional)") },
+                            placeholder = { Text("content://com.llamalab.automate.provider/flows/…") },
+                            singleLine = true
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                persistConfig()
+                                status = openAutomate(context, automateFlowUri)
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (automateFlowUri.isBlank()) "Automate öffnen" else "Automate-Flow starten") }
+                        Text(
+                            "Der Flow muss in Automate selbst angelegt sein: Flow-Beginn → App starten (Ollama-App) → HTTP-Anfrage an den Server prüfen. " +
+                                "Die Flow-Adresse ist installationsgebunden und wird hier lokal gespeichert.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Button(onClick = { persistConfig(); status = "Verbindungseinstellungen gespeichert." }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Einstellungen speichern")
+                        }
                     }
                 }
             }
         }
     }
-}
 
-private suspend fun callChatApi(
-    context: Context,
-    endpoint: String,
-    model: String,
-    prompt: String
-): String = withContext(Dispatchers.IO) {
-    val apiKey = ApiKeyStore.load(context)
-    val targetUrl = endpoint.trim()
-    if (!apiKey.isNullOrEmpty() && !targetUrl.startsWith("https://", ignoreCase = true)) {
-        error("API-Schlüssel werden nur über HTTPS übertragen. Für lokales Ollama das Schlüssel-Feld bitte leer lassen.")
-    }
-
-    val client = OkHttpClient()
-    val payload = JSONObject().put("model", model)
-        .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
-        .put("stream", false)
-    val body = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-    val requestBuilder = Request.Builder().url(targetUrl).post(body)
-    if (!apiKey.isNullOrEmpty()) {
-        requestBuilder.header("Authorization", "Bearer $apiKey")
-    }
-    client.newCall(requestBuilder.build()).execute().use { response ->
-        val responseText = response.body?.string().orEmpty()
-        if (!response.isSuccessful) error("HTTP ${response.code}: ${responseText.take(300)}")
-        JSONObject(responseText).getJSONArray("choices").getJSONObject(0)
-            .getJSONObject("message").optString("content", "Leere Antwort")
+    if (showModelPicker) {
+        AlertDialog(
+            onDismissRequest = { showModelPicker = false },
+            title = { Text("Verfügbares Modell auswählen") },
+            text = {
+                LazyColumn {
+                    items(availableModels) { item ->
+                        TextButton(
+                            onClick = {
+                                model = item
+                                persistConfig()
+                                showModelPicker = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(item) }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelPicker = false }) { Text("Schließen") }
+            }
+        )
     }
 }
