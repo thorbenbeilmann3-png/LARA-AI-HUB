@@ -177,15 +177,29 @@ footer{color:var(--muted);font-size:11px;padding:25px 0}
     <button class="primary" onclick="alert('ARENA-Engine ist noch nicht angebunden.')">Wettkampf vorbereiten</button>
   </div>
   <div class="grid">
-    <div class="card"><h3>KÄMPFER 01</h3><strong>Google Gemini</strong><br><span class="small">Cloud-Modell · Anbindung offen</span><br><span class="tag">Slot 1</span></div>
-    <div class="card"><h3>KÄMPFER 02</h3><strong>OpenRouter</strong><br><span class="small">Modell-Gateway · Anbindung offen</span><br><span class="tag">Slot 2</span></div>
-    <div class="card"><h3>KÄMPFER 03</h3><strong>Cerebras</strong><br><span class="small">Inference-API · Anbindung offen</span><br><span class="tag">Slot 3</span></div>
-    <div class="card"><h3>KÄMPFER 04</h3><strong>Ollama · Qwen</strong><br><span class="small">Lokales Modell · Verbindung zu prüfen</span><br><span class="tag">Slot 4</span></div>
-    <div class="card"><h3>KÄMPFER 05</h3><strong>Anthropic Claude</strong><br><span class="small">Optionale spätere Anbindung · kostenpflichtig</span><br><span class="tag">Slot 5</span></div>
+    <div class="card"><h3>KÄMPFER 01</h3><strong>Google Gemini</strong><br><span class="small">Cloud-Modell · Anbindung offen</span><br><span class="tag">Wettbewerber</span></div>
+    <div class="card"><h3>KÄMPFER 02</h3><strong>OpenRouter</strong><br><span class="small">Modell-Gateway · Anbindung offen</span><br><span class="tag">Wettbewerber</span></div>
+    <div class="card"><h3>KÄMPFER 03</h3><strong>Cerebras</strong><br><span class="small">Inference-API · Anbindung offen</span><br><span class="tag">Wettbewerber</span></div>
+    <div class="card"><h3>KÄMPFER 04</h3><strong>Ollama · Qwen</strong><br><span class="small">Lokales Modell · Verbindung zu prüfen</span><br><span class="tag">Wettbewerber</span></div>
+    <div class="card"><h3>KÄMPFER 05</h3><strong>OpenAI · ChatGPT</strong><br><span class="small">Cloud-Modell · optionale API-Anbindung</span><br><span class="tag">Wettbewerber</span></div>
+    <div class="card" style="border-color:var(--gold);">
+      <h3>PRÜFER 06 · CLAUDE</h3><strong>Anthropic Claude</strong><br><span class="small">Unabhängige Jury und Qualitätsprüfung · API-Anbindung offen</span><br><span class="tag">Prüfer &amp; Rückrunde</span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>CLAUDE-PRÜFSCHLEIFE · GEPLANTER ABLAUF</h3>
+    <ol>
+      <li>Alle fünf Wettbewerber erhalten dieselbe Aufgabe und liefern unabhängig ihre Antwort.</li>
+      <li>Claude prüft die fünf Antworten auf Fakten, Vollständigkeit, Logik, Sicherheit und Regelkonformität.</li>
+      <li>Claude erstellt für jeden Wettbewerber konkrete Kritikpunkte und Verbesserungsvorschläge.</li>
+      <li>Die Kritik geht an den jeweiligen Wettbewerber zurück. Jeder erstellt eine überarbeitete Antwort in Runde 2.</li>
+      <li>Claude prüft die überarbeiteten Antworten erneut und erstellt einen begründeten Vergleich mit Punkten und Rangfolge.</li>
+    </ol>
+    <p class="small">Claude bewertet nicht seine eigene Antwort. Die Prüfschleife ist hier als Konzept dargestellt; die API-Verbindungen und automatische Rundensteuerung sind noch nicht implementiert.</p>
   </div>
   <div class="card">
     <h3>BEWERTUNG</h3>
-    <p class="small">Antwortqualität, Genauigkeit, Geschwindigkeit und Regelkonformität sollen später bewertet werden.</p>
+    <p class="small">Qualität · Faktenrichtigkeit · Vollständigkeit · Geschwindigkeit · Kosten · Zuverlässigkeit. Ergebnisse und Kritik sollen je Runde dokumentiert werden.</p>
   </div>
 </section>
 
