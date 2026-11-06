@@ -11,6 +11,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -216,8 +218,9 @@ private fun LaraHubApp() {
                 }
             }
         ) { padding ->
+            val pageModifier = if (selectedTab == 3) Modifier.verticalScroll(rememberScrollState()) else Modifier
             Column(
-                Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                Modifier.fillMaxSize().padding(padding).padding(16.dp).then(pageModifier),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 when (selectedTab) {
@@ -445,7 +448,7 @@ private fun LaraHubApp() {
             onDismissRequest = { showModelPicker = false },
             title = { Text("Verfügbares Modell auswählen") },
             text = {
-                LazyColumn {
+                LazyColumn(Modifier.heightIn(max = 320.dp)) {
                     items(availableModels) { item ->
                         TextButton(
                             onClick = {
