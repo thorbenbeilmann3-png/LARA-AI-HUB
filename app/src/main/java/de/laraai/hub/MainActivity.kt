@@ -36,7 +36,8 @@ private data class ChatLine(val role: String, val text: String, val time: String
 private data class LaraConfig(
     val endpoint: String,
     val model: String,
-    val automateFlowUri: String
+    val automateFlowUri: String,
+    val autoStartAutomate: Boolean
 )
 
 private fun loadConfig(context: Context): LaraConfig {
@@ -44,15 +45,17 @@ private fun loadConfig(context: Context): LaraConfig {
     return LaraConfig(
         endpoint = prefs.getString("endpoint", "http://10.179.130.230:12434/") ?: "http://10.179.130.230:12434/",
         model = prefs.getString("model", "") ?: "",
-        automateFlowUri = prefs.getString("automate_flow_uri", "") ?: ""
+        automateFlowUri = prefs.getString("automate_flow_uri", "") ?: "",
+        autoStartAutomate = prefs.getBoolean("auto_start_automate", false)
     )
 }
 
-private fun saveConfig(context: Context, endpoint: String, model: String, flowUri: String) {
+private fun saveConfig(context: Context, endpoint: String, model: String, flowUri: String, autoStartAutomate: Boolean) {
     context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE).edit()
         .putString("endpoint", endpoint.trim())
         .putString("model", model.trim())
         .putString("automate_flow_uri", flowUri.trim())
+        .putBoolean("auto_start_automate", autoStartAutomate)
         .apply()
 }
 
@@ -130,6 +133,7 @@ private fun LaraHubApp() {
     var endpoint by remember { mutableStateOf(initialConfig.endpoint) }
     var model by remember { mutableStateOf(initialConfig.model) }
     var automateFlowUri by remember { mutableStateOf(initialConfig.automateFlowUri) }
+    var autoStartAutomate by remember { mutableStateOf(initialConfig.autoStartAutomate) }
     var apiKeyInput by remember { mutableStateOf("") }
     var hasSavedApiKey by remember { mutableStateOf(ApiKeyStore.hasSaved(context)) }
     var apiKeyStatus by remember {
@@ -155,7 +159,7 @@ private fun LaraHubApp() {
     }
 
     fun persistConfig() {
-        saveConfig(context, endpoint, model, automateFlowUri)
+        saveConfig(context, endpoint, model, automateFlowUri, autoStartAutomate)
     }
 
     fun checkConnection() {
@@ -178,6 +182,12 @@ private fun LaraHubApp() {
             } finally {
                 checking = false
             }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (autoStartAutomate && automateFlowUri.isNotBlank()) {
+            status = openAutomate(context, automateFlowUri)
         }
     }
 
@@ -402,13 +412,20 @@ private fun LaraHubApp() {
                             placeholder = { Text("content://com.llamalab.automate.provider/flows/…") },
                             singleLine = true
                         )
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = autoStartAutomate,
+                                onCheckedChange = { autoStartAutomate = it; persistConfig() }
+                            )
+                            Text("Automate-Flow beim Start von LARA automatisch ausführen")
+                        }
                         OutlinedButton(
                             onClick = {
                                 persistConfig()
                                 status = openAutomate(context, automateFlowUri)
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (automateFlowUri.isBlank()) "Automate öffnen" else "Automate-Flow starten") }
+                        ) { Text(if (automateFlowUri.isBlank()) "Automate öffnen" else "Automate-Flow jetzt starten") }
                         Text(
                             "Der Flow muss in Automate selbst angelegt sein: Flow-Beginn → App starten (Ollama-App) → HTTP-Anfrage an den Server prüfen. " +
                                 "Die Flow-Adresse ist installationsgebunden und wird hier lokal gespeichert.",
