@@ -39,7 +39,11 @@ internal object ApiKeyStore {
     fun hasSaved(context: Context): Boolean = hasSaved(context, LEGACY_PROVIDER_ID)
 
     fun hasSaved(context: Context, providerId: String): Boolean {
-        val keys = credentialKeys(providerId)
+        val keys = if (providerId == LEGACY_PROVIDER_ID) {
+            LEGACY_CIPHERTEXT_KEY to LEGACY_IV_KEY
+        } else {
+            credentialKeys(providerId)
+        }
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return prefs.contains(keys.first) && prefs.contains(keys.second)
     }
