@@ -48,7 +48,8 @@ async def health() -> dict[str, Any]:
     return {
         "status": "ok",
         "python_version": platform.python_version(),
-        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),\n        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
         "ollama_configured": bool(os.getenv("OLLAMA_BASE_URL")),
         "automation": "registered tasks only; bearer token required",
     }
