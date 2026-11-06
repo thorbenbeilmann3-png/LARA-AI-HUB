@@ -79,7 +79,19 @@ internal object ApiConnection {
             .get()
             .apply { applyProviderHeaders(this, provider, apiKey) }
             .build()
-        val response = JSONObject(execute(request))
+        val responseText = try {
+            execute(request)
+        } catch (e: Exception) {
+            if (provider == AiProvider.OPENCLAW && e.message.orEmpty().contains("HTTP 404")) {
+                error(
+                    "OpenClaw Chat Completions ist deaktiviert oder nicht erreichbar. " +
+                        "Aktiviere in der Gateway-Konfiguration " +
+                        "gateway.http.endpoints.chatCompletions.enabled=true."
+                )
+            }
+            throw e
+        }
+        val response = JSONObject(responseText)
         val models = when (provider) {
             AiProvider.ANTHROPIC -> parseIdModels(response)
             AiProvider.GEMINI -> parseGeminiModels(response)
