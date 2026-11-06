@@ -102,8 +102,15 @@ private fun openAutomate(context: Context, flowUri: String): String {
                 setPackage("com.llamalab.automate")
                 data = Uri.parse(flowUri)
             }
-            context.startActivity(intent)
-            "Automate-Flow wurde an Android übergeben."
+            try {
+                context.startActivity(intent)
+                "Automate-Flow wurde an Android übergeben. Der Startstatus muss in Automate geprüft werden."
+            } catch (_: Exception) {
+                val launchIntent = context.packageManager.getLaunchIntentForPackage("com.llamalab.automate")
+                    ?: throw IllegalStateException("Automate ist installiert, aber nicht startbar.")
+                context.startActivity(launchIntent)
+                "Automate geöffnet. Android hat den direkten Flow-Aufruf nicht angenommen; bitte den Flow dort manuell starten."
+            }
         } else {
             val launchIntent = context.packageManager.getLaunchIntentForPackage("com.llamalab.automate")
                 ?: error("Automate ist auf diesem Gerät nicht startbar.")
