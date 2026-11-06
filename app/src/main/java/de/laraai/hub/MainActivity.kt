@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,9 +62,17 @@ private fun LaraHubApp() {
     val context = LocalContext.current
     var endpoint by remember { mutableStateOf("http://127.0.0.1:12434/v1/chat/completions") }
     var model by remember { mutableStateOf("qwen2.5-0.5b-instruct-q4_k_m") }
+    var apiKeyInput by remember { mutableStateOf("") }
+    var hasSavedApiKey by remember { mutableStateOf(ApiKeyStore.hasSaved(context)) }
+    var apiKeyStatus by remember {
+        mutableStateOf(
+            if (ApiKeyStore.hasSaved(context)) "API-Schlüssel ist auf diesem Gerät verschlüsselt gespeichert."
+            else "Kein API-Schlüssel gespeichert."
+        )
+    }
     var prompt by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Verbunden – bereit für Anfragen") }
+    var status by remember { mutableStateOf("Bereit – Verbindung wird beim Senden geprüft") }
     var selectedTab by remember { mutableStateOf(0) }
     val lines = remember { mutableStateListOf<ChatLine>().apply { addAll(loadMessages(context)) } }
     val scope = rememberCoroutineScope()
@@ -116,7 +125,7 @@ private fun LaraHubApp() {
                                 status = "Anfrage wird gesendet …"
                                 scope.launch {
                                     try {
-                                        val answer = callChatApi(endpoint, model, question)
+                                        val answer = callChatApi(context, endpoint, model, question)
                                         addMessage("LARA / $model", answer)
                                         status = "Antwort erhalten"
                                     } catch (e: Exception) {
@@ -157,8 +166,51 @@ private fun LaraHubApp() {
                         Text("Verbindung", style = MaterialTheme.typography.headlineSmall)
                         OutlinedTextField(endpoint, { endpoint = it }, Modifier.fillMaxWidth(), label = { Text("API-Endpunkt") })
                         OutlinedTextField(model, { model = it }, Modifier.fillMaxWidth(), label = { Text("Modellname") })
-                        Text("Aktuell ein OpenAI-kompatibler Endpunkt. Mehrere Anbieterprofile für Ollama, OpenAI und Anthropic folgen als nächster Schritt.")
-                        Text("Keine API-Schlüssel in Nachrichten einfügen. Für externe Server sind HTTPS und sichere Schlüsselverwaltung erforderlich.")
+                        Divider()
+                        Text("API-Schlüssel", style = MaterialTheme.typography.titleMedium)
+                        OutlinedTextField(
+                            value = apiKeyInput,
+                            onValueChange = { apiKeyInput = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("API-Schlüssel eingeben") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true
+                        )
+                        Text(apiKeyStatus, style = MaterialTheme.typography.bodySmall)
+                        Button(
+                            onClick = {
+                                try {
+                                    ApiKeyStore.save(context, apiKeyInput)
+                                    apiKeyInput = ""
+                                    hasSavedApiKey = true
+                                    apiKeyStatus = "API-Schlüssel sicher gespeichert. Er wird beim nächsten Start wiederverwendet."
+                                } catch (e: Exception) {
+                                    apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
+                                }
+                            },
+                            enabled = apiKeyInput.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Schlüssel sicher speichern") }
+                        TextButton(
+                            onClick = {
+                                try {
+                                    ApiKeyStore.clear(context)
+                                    apiKeyInput = ""
+                                    hasSavedApiKey = false
+                                    apiKeyStatus = "Gespeicherter API-Schlüssel wurde entfernt."
+                                } catch (e: Exception) {
+                                    apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
+                                }
+                            },
+                            enabled = hasSavedApiKey,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Gespeicherten Schlüssel entfernen") }
+                        Text(
+                            "Der Schlüssel wird mit AES-GCM verschlüsselt; der Geräteschlüssel bleibt im Android Keystore. " +
+                                "Er wird niemals im Quellcode oder Nachrichtenarchiv abgelegt. " +
+                                "Für lokales Ollama normalerweise leer lassen. Ein gespeicherter Schlüssel wird nur über HTTPS übertragen.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
             }
@@ -166,18 +218,31 @@ private fun LaraHubApp() {
     }
 }
 
-private suspend fun callChatApi(endpoint: String, model: String, prompt: String): String =
-    withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
-        val payload = JSONObject().put("model", model)
-            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
-            .put("stream", false)
-        val body = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = Request.Builder().url(endpoint.trim()).post(body).build()
-        client.newCall(request).execute().use { response ->
-            val responseText = response.body?.string().orEmpty()
-            if (!response.isSuccessful) error("HTTP ${response.code}: ${responseText.take(300)}")
-            JSONObject(responseText).getJSONArray("choices").getJSONObject(0)
-                .getJSONObject("message").optString("content", "Leere Antwort")
-        }
+private suspend fun callChatApi(
+    context: Context,
+    endpoint: String,
+    model: String,
+    prompt: String
+): String = withContext(Dispatchers.IO) {
+    val apiKey = ApiKeyStore.load(context)
+    val targetUrl = endpoint.trim()
+    if (!apiKey.isNullOrEmpty() && !targetUrl.startsWith("https://", ignoreCase = true)) {
+        error("API-Schlüssel werden nur über HTTPS übertragen. Für lokales Ollama das Schlüssel-Feld bitte leer lassen.")
     }
+
+    val client = OkHttpClient()
+    val payload = JSONObject().put("model", model)
+        .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+        .put("stream", false)
+    val body = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+    val requestBuilder = Request.Builder().url(targetUrl).post(body)
+    if (!apiKey.isNullOrEmpty()) {
+        requestBuilder.header("Authorization", "Bearer $apiKey")
+    }
+    client.newCall(requestBuilder.build()).execute().use { response ->
+        val responseText = response.body?.string().orEmpty()
+        if (!response.isSuccessful) error("HTTP ${response.code}: ${responseText.take(300)}")
+        JSONObject(responseText).getJSONArray("choices").getJSONObject(0)
+            .getJSONObject("message").optString("content", "Leere Antwort")
+    }
+}
