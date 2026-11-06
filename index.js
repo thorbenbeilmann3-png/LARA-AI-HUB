@@ -47,7 +47,7 @@ function sendResponse(response, statusCode, headers, body) {
   response.end(body);
 }
 
-function proxyRequest(targetUrl, method, body, response) {
+function proxyRequest(targetUrl, method, body, response, onResult) {
   return new Promise((resolve) => {
     const url = new URL(targetUrl);
     const httpModule = getHttpModule(url);
@@ -67,10 +67,14 @@ function proxyRequest(targetUrl, method, body, response) {
       let data = "";
       res.on("data", (chunk) => (data += chunk));
       res.on("end", () => {
-        sendResponse(response, res.statusCode, {
-          "Content-Type": res.headers["content-type"] || "application/json",
-          "Access-Control-Allow-Origin": "*"
-        }, data);
+        if (onResult) {
+          onResult(res.statusCode, res.headers, data);
+        } else {
+          sendResponse(response, res.statusCode, {
+            "Content-Type": res.headers["content-type"] || "application/json",
+            "Access-Control-Allow-Origin": "*"
+          }, data);
+        }
         resolve();
       });
     });
@@ -136,7 +140,16 @@ const server = http.createServer((request, response) => {
       return;
     }
     const base = ollamaUrl.endsWith("/") ? ollamaUrl : ollamaUrl + "/";
-    void proxyRequest(base + "api/tags", "GET", null, response);
+    void proxyRequest(base + "v1/models", "GET", null, response, (status, headers, data) => {
+      if (status === 404 || status === 405) {
+        void proxyRequest(base + "api/tags", "GET", null, response);
+        return;
+      }
+      sendResponse(response, status, {
+        "Content-Type": headers["content-type"] || "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }, data);
+    });
     return;
   }
 
