@@ -170,3 +170,40 @@ Erst nach Bestätigung der Geräte-API:
 - Google Pixel 9a technische Daten (8 GB RAM): https://support.google.com/pixelphone/answer/7158570
 - Ollama Qwen3-Modellbibliothek und Modellgrößen: https://ollama.com/library/qwen3
 - Qwen3-Projekt und OpenAI-kompatible API-Hinweise: https://github.com/QwenLM/Qwen3
+
+
+## 11. Ergänzung nach direkter Prüfung der Android-App
+
+Die folgenden Dateien wurden zusätzlich direkt auf diesem Branch gelesen:
+
+- `app/src/main/AndroidManifest.xml`
+- `app/src/main/java/de/laraai/hub/MainActivity.kt`
+- `app/src/main/java/de/laraai/hub/ApiConnection.kt`
+- `app/build.gradle.kts`
+
+### Bereits vorhandener direkter Android-Verbindungsweg
+
+- Die native Android-App verwendet OkHttp direkt auf dem Smartphone. Sie muss den Ollama-Server daher nicht über den Cloud-Node-Proxy erreichen.
+- Der Standard-Endpunkt in der App ist derzeit `http://10.179.130.230:12434/`.
+- Das Manifest enthält die Internet-Berechtigung und `android:usesCleartextTraffic="true"`, damit lokale HTTP-Verbindungen möglich sind.
+- `ApiConnection.discover()` versucht zuerst `GET /v1/models` und liest `data[].id`; bei einem HTTP-/Verbindungsfehler versucht es anschließend `GET /api/tags`.
+- `ApiConnection.chat()` verwendet abhängig vom erkannten Modus `POST /v1/chat/completions` oder `POST /api/chat`.
+- API-Schlüssel werden nur über HTTPS geladen/übertragen; für lokales Ollama muss das API-Schlüsselfeld leer bleiben.
+- Der direkte Android-Verbindungsweg ist für den ersten echten Gerätetest vorzuziehen. Die Cloud-Webvorschau und ihr Node-Proxy sind davon getrennt zu betrachten.
+
+### Noch vorhandene Android-App-Lücken
+
+- Der Chat-Aufruf in `ApiConnection.chat()` sendet aktuell nur die jeweils neue Nutzerfrage. Frühere Gesprächsnachrichten werden lokal gespeichert, aber nicht als Verlauf an das Modell übertragen.
+- `discover()` akzeptiert eine erfolgreiche OpenAI-Modelllisten-Antwort auch dann, wenn `data[]` leer ist; in diesem Fall wird nicht zusätzlich `/api/tags` versucht. Das ist nicht zwingend falsch, muss aber gegen das tatsächliche Verhalten des Geräte-Servers geprüft werden.
+- Die Android-App wurde in dieser Prüfung nur aus dem GitHub-Quelltext gelesen. Ein Gradle-Build, eine Installation auf dem Pixel 9a und ein echter Chat wurden hier nicht ausgeführt.
+- `usesCleartextTraffic="true"` erlaubt unverschlüsseltes HTTP für die App. Nur im vertrauenswürdigen lokalen Netzwerk verwenden; den Ollama-Port nicht öffentlich freigeben.
+
+### Aktualisierte Reihenfolge
+
+1. In der nativen LARA-App auf dem Pixel 9a die aktuelle Ollama-Adresse prüfen.
+2. In der App „Verbinden / Modelle laden“ ausführen und den tatsächlich erkannten API-Modus sowie die Modellliste notieren.
+3. `qwen3:4b` über die Modellverwaltung der Ollama-App installieren, sofern die App diesen Pull unterstützt. Falls nicht, zunächst klären, welche Download-/Pull-Funktion die verwendete Server-App anbietet; keinen Standard-Ollama-CLI-Befehl als verfügbar voraussetzen.
+4. In LARA erneut verbinden und prüfen, ob `qwen3:4b` erscheint.
+5. Eine kurze Testfrage senden und die echte Antwort kontrollieren.
+6. Erst danach die Webvorschau/den Node-Proxy anpassen. Keine ungetestete Cloud-Proxy-Architektur als funktionierend deklarieren.
+
