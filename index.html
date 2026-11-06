@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101014">
+<title>LARA NEXUS</title>
+<style>
+:root {
+  --bg:#101014;
+  --panel:#19191f;
+  --panel2:#202027;
+  --gold:#d6ad61;
+  --text:#f3f0e9;
+  --muted:#96949b;
+  --border:#33323a;
+  --green:#67d69a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:Arial,sans-serif;min-height:100vh;
+}
+header{
+  height:70px;padding:0 22px;display:flex;
+  align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  background:#15151a;position:sticky;top:0;z-index:5;
+}
+.logo{font-size:21px;font-weight:800;letter-spacing:3px}
+.logo span{color:var(--gold)}
+.status{font-size:12px;color:var(--green)}
+.layout{display:flex;min-height:calc(100vh - 70px)}
+nav{
+  width:220px;padding:22px 12px;
+  border-right:1px solid var(--border);
+  background:#15151a;flex-shrink:0;
+}
+.nav-title{color:var(--muted);font-size:10px;letter-spacing:2px;padding:10px}
+nav button{
+  width:100%;padding:14px;border:0;background:transparent;
+  color:#aaa8b0;text-align:left;border-radius:9px;
+  cursor:pointer;font-size:14px;margin:3px 0;
+}
+nav button.active,nav button:hover{
+  background:#29251e;color:var(--gold);
+}
+main{flex:1;padding:28px;min-width:0}
+.page{display:none}
+.page.active{display:block}
+h1{font-size:27px;margin:0 0 8px}
+.subtitle{color:var(--muted);margin-bottom:25px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px}
+.card{
+  background:var(--panel);border:1px solid var(--border);
+  padding:20px;border-radius:13px;margin-bottom:15px;
+}
+.card h3{font-size:14px;color:var(--gold);margin:0 0 12px}
+.big{font-size:24px;font-weight:bold}
+.small{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;padding:5px 9px;border-radius:20px;
+  background:#29251e;color:var(--gold);font-size:11px}
+button.primary{
+  background:var(--gold);color:#151515;border:0;
+  border-radius:8px;padding:12px 17px;font-weight:bold;cursor:pointer;
+}
+button.secondary{
+  background:var(--panel2);color:var(--text);
+  border:1px solid var(--border);border-radius:8px;
+  padding:11px 15px;cursor:pointer;
+}
+input,textarea,select{
+  width:100%;background:#111116;color:white;
+  border:1px solid var(--border);border-radius:8px;
+  padding:13px;margin:7px 0 13px;outline:none;
+}
+input:focus,textarea:focus{border-color:var(--gold)}
+.chatbox{
+  height:350px;overflow-y:auto;background:#111116;
+  border:1px solid var(--border);border-radius:10px;
+  padding:15px;margin-bottom:12px;
+}
+.message{padding:12px;margin:8px 0;border-radius:9px;
+  background:var(--panel2);font-size:14px;white-space:pre-wrap}
+.message.user{border-left:3px solid var(--gold)}
+.message.bot{border-left:3px solid var(--green)}
+.row{display:flex;gap:9px}
+.row input{flex:1}
+.row button{white-space:nowrap}
+.setting{max-width:600px}
+footer{color:var(--muted);font-size:11px;padding:25px 0}
+@media(max-width:700px){
+  .layout{display:block}
+  nav{width:100%;display:flex;overflow-x:auto;padding:8px}
+  .nav-title{display:none}
+  nav button{min-width:max-content;width:auto;padding:11px}
+  main{padding:18px}
+  header{height:60px}
+  .logo{font-size:17px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">LARA <span>NEXUS</span></div>
+  <div class="status">● SYSTEM INTERFACE</div>
+</header>
+
+<div class="layout">
+<nav>
+  <div class="nav-title">HAUPTMENÜ</div>
+  <button class="active" onclick="showPage('dashboard',this)">⌂ Dashboard</button>
+  <button onclick="showPage('chat',this)">◉ LARA Chat</button>
+  <button onclick="showPage('arena',this)">⚔ ARENA</button>
+  <button onclick="showPage('ollama',this)">◈ Ollama</button>
+  <button onclick="showPage('agents',this)">◇ Agenten</button>
+  <button onclick="showPage('settings',this)">⚙ Einstellungen</button>
+</nav>
+
+<main>
+
+<section id="dashboard" class="page active">
+  <h1>Willkommen bei LARA</h1>
+  <div class="subtitle">Dein persönliches lokales KI-Kontrollzentrum.</div>
+  <div class="grid">
+    <div class="card">
+      <h3>SYSTEM</h3>
+      <div class="big">NEXUS</div>
+      <div class="small">Weboberfläche aktiv</div>
+    </div>
+    <div class="card">
+      <h3>KI-ENGINE</h3>
+      <div class="big">Ollama</div>
+      <div class="small">Verbindung noch zu prüfen</div>
+    </div>
+    <div class="card">
+      <h3>ARENA</h3>
+      <div class="big">5 Slots</div>
+      <div class="small">Wettkampfoberfläche vorbereitet</div>
+    </div>
+    <div class="card">
+      <h3>AGENTEN</h3>
+      <div class="big">Bereit</div>
+      <div class="small">Noch nicht angebunden</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>SYSTEMINFORMATION</h3>
+    <p>Die Oberfläche ist eingerichtet. Die Verbindung zu den KI-Modellen, Agenten und Werkzeugen wird in den nächsten Schritten integriert.</p>
+    <span class="tag">LARA NEXUS v1.0</span>
+  </div>
+</section>
+
+<section id="chat" class="page">
+  <h1>LARA CHAT</h1>
+  <div class="subtitle">Kommunikationszentrale für deine lokale KI.</div>
+  <div class="card">
+    <h3>GESPRÄCH</h3>
+    <div id="chatbox" class="chatbox">
+      <div class="message bot">Bereit. Schicke eine Nachricht an das ausgewählte Ollama-Modell.</div>
+    </div>
+    <div id="chatLoading" class="small" style="color:var(--green);display:none;">Lade Antwort vom Modell…</div>
+    <div class="row">
+      <input id="chatInput" placeholder="Schreibe eine Nachricht..." onkeydown="if(event.key==='Enter')sendMessage()">
+      <button class="primary" onclick="sendMessage()">Senden</button>
+    </div>
+    <div id="chatError" class="small" style="color:#ff6b6b;display:none;"></div>
+  </div>
+</section>
+
+<section id="arena" class="page">
+  <h1>ARENA</h1>
+  <div class="subtitle">Mehrere KI-Modelle treten gegeneinander an.</div>
+  <div class="card">
+    <h3>WETTKAMPF-AUFTRAG</h3>
+    <textarea id="arenaTask" rows="4" placeholder="Welche Aufgabe sollen die Modelle lösen?"></textarea>
+    <button class="primary" onclick="alert('ARENA-Engine ist noch nicht angebunden.')">Wettkampf vorbereiten</button>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>KÄMPFER 01</h3>Qwen <span class="tag">Slot 1</span></div>
+    <div class="card"><h3>KÄMPFER 02</h3>Modell 2 <span class="tag">Slot 2</span></div>
+    <div class="card"><h3>KÄMPFER 03</h3>Modell 3 <span class="tag">Slot 3</span></div>
+    <div class="card"><h3>KÄMPFER 04</h3>Modell 4 <span class="tag">Slot 4</span></div>
+    <div class="card"><h3>KÄMPFER 05</h3>Modell 5 <span class="tag">Slot 5</span></div>
+  </div>
+  <div class="card">
+    <h3>BEWERTUNG</h3>
+    <p class="small">Antwortqualität, Genauigkeit, Geschwindigkeit und Regelkonformität sollen später bewertet werden.</p>
+  </div>
+</section>
+
+<section id="ollama" class="page">
+  <h1>OLLAMA</h1>
+  <div class="subtitle">Verbindung zur lokalen Modell-Engine.</div>
+  <div class="card setting">
+    <h3>SERVERADRESSE</h3>
+    <label>Ollama-Adresse</label>
+    <input id="ollamaUrl" value="http://10.179.130.230:12434">
+    <label>Modellname</label>
+    <input id="modelName" value="qwen3.5:2b">
+    <button class="primary" onclick="testOllama()">Verbindung testen</button>
+    <button class="secondary" onclick="saveOllamaSettings()">Einstellungen speichern</button>
+    <p id="ollamaStatus" class="small">Noch nicht getestet.</p>
+    <p id="ollamaSaveStatus" class="small"></p>
+  </div>
+  <div class="card">
+    <h3>HINWEIS</h3>
+    <p class="small">Die Verbindung funktioniert nur, wenn der Server erreichbar ist und CORS bzw. der API-Zugriff korrekt eingerichtet sind.</p>
+  </div>
+</section>
+
+<section id="agents" class="page">
+  <h1>AGENTEN</h1>
+  <div class="subtitle">Zentrale für Aufgaben und Automatisierungen.</div>
+  <div class="grid">
+    <div class="card"><h3>KOORDINATOR</h3>Plant und verteilt Aufgaben.</div>
+    <div class="card"><h3>UMSETZER</h3>Bearbeitet freigegebene Aufgaben.</div>
+    <div class="card"><h3>PRÜFER</h3>Kontrolliert Ergebnisse unabhängig.</div>
+  </div>
+  <div class="card">
+    <h3>AUFGABENSTATUS</h3>
+    <span class="tag">Noch keine Agenten angebunden</span>
+  </div>
+</section>
+
+<section id="settings" class="page">
+  <h1>EINSTELLUNGEN</h1>
+  <div class="subtitle">Konfiguration der LARA-Oberfläche.</div>
+  <div class="card setting">
+    <h3>ALLGEMEIN</h3>
+    <label>Systemname</label>
+    <input value="LARA NEXUS" disabled>
+    <label>Node.js API-Adresse</label>
+    <input id="apiUrl" value="http://localhost:3000">
+    <button class="primary" onclick="saveSettings()">Einstellungen speichern</button>
+    <p id="saveStatus" class="small"></p>
+  </div>
+  <div class="card setting">
+    <h3>SICHERHEIT</h3>
+    <p class="small">API-Schlüssel werden in dieser Version bewusst nicht im Browser gespeichert. Die spätere API übernimmt die sichere serverseitige Speicherung.</p>
+  </div>
+</section>
+
+<footer>LARA NEXUS · PRIVATE AI CONTROL CENTER · VERSION 1.0</footer>
+</main>
+</div>
+
+<script>
+function showPage(id,button){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  button.classList.add('active');
+}
+
+async function sendMessage(){
+  const input=document.getElementById('chatInput');
+  const box=document.getElementById('chatbox');
+  const value=input.value.trim();
+  if(!value)return;
+
+  const ollamaUrl=document.getElementById('ollamaUrl').value.trim();
+  const model=document.getElementById('modelName').value.trim();
+
+  if(!ollamaUrl){
+    showChatError('Bitte eine Ollama-Adresse in den Einstellungen eingeben.');
+    return;
+  }
+  if(!model){
+    showChatError('Bitte einen Modellnamen in den Einstellungen eingeben.');
+    return;
+  }
+  try{
+    new URL(ollamaUrl);
+  }catch(e){
+    showChatError('Ungültige Ollama-Adresse.');
+    return;
+  }
+
+  const apiUrl=localStorage.getItem('lara_api_url') || document.getElementById('apiUrl').value.trim() || 'http://localhost:3000';
+
+  const userMsg=document.createElement('div');
+  userMsg.className='message user';
+  userMsg.textContent=value;
+  box.appendChild(userMsg);
+  input.value='';
+  box.scrollTop=box.scrollHeight;
+
+  const loading=document.getElementById('chatLoading');
+  const error=document.getElementById('chatError');
+  error.style.display='none';
+  loading.style.display='block';
+
+  let botMsg=document.createElement('div');
+  botMsg.className='message bot';
+  botMsg.textContent='';
+  box.appendChild(botMsg);
+  box.scrollTop=box.scrollHeight;
+
+  try{
+    const response=await fetch(apiUrl + '/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        ollamaUrl:ollamaUrl,
+        model:model,
+        messages:[{role:'user',content:value}]
+      })
+    });
+
+    if(!response.ok){
+      const errText=await response.text();
+      throw new Error('API-Fehler '+response.status+': '+errText);
+    }
+
+    const data=await response.json();
+    let reply='';
+    if(data.choices && data.choices[0] && data.choices[0].message){
+      reply=data.choices[0].message.content || '(keine Antwort vom Modell)';
+    } else if(data.message && data.message.content){
+      reply=data.message.content;
+    } else {
+      reply='Antwort konnte nicht verarbeitet werden.';
+    }
+    botMsg.textContent=reply;
+  }catch(err){
+    botMsg.remove();
+    showChatError('Verbindung fehlgeschlagen: '+err.message+'. Bitte Ollama-Adresse und Server prüfen.');
+  } finally{
+    loading.style.display='none';
+    box.scrollTop=box.scrollHeight;
+  }
+}
+
+function showChatError(text){
+  const error=document.getElementById('chatError');
+  error.textContent=text;
+  error.style.display='block';
+}
+
+async function testOllama(){
+  const status=document.getElementById('ollamaStatus');
+  const url=document.getElementById('ollamaUrl').value.replace(/\/+$/,'');
+  status.textContent='Verbindung wird geprüft...';
+  try{
+    const response=await fetch(url+'/api/tags');
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    status.textContent='Server erreichbar. Modelle gefunden: '+(data.models?.length ?? 0);
+  }catch(error){
+    status.textContent='Verbindung fehlgeschlagen: '+error.message+'. CORS oder Netzwerk prüfen.';
+  }
+}
+
+function saveSettings(){
+  const urlInput=document.getElementById('apiUrl');
+  const url=urlInput.value.trim();
+  if(!url){
+    document.getElementById('saveStatus').textContent='Fehler: Bitte eine API-Adresse eingeben.';
+    return;
+  }
+  try{
+    new URL(url);
+  }catch(e){
+    document.getElementById('saveStatus').textContent='Fehler: Ungültige API-Adresse.';
+    return;
+  }
+  localStorage.setItem('lara_api_url',url);
+  document.getElementById('saveStatus').style.color='var(--green)';
+  document.getElementById('saveStatus').textContent='Gespeichert: Node.js API-Adresse wurde dauerhaft gespeichert.';
+}
+
+function saveOllamaSettings(){
+  const urlInput=document.getElementById('ollamaUrl');
+  const modelInput=document.getElementById('modelName');
+  const status=document.getElementById('ollamaSaveStatus');
+  const url=urlInput.value.trim();
+  const model=modelInput.value.trim();
+
+  if(!url){
+    status.style.color='var(--green)';
+    status.textContent='Fehler: Bitte eine Ollama-Adresse eingeben.';
+    return;
+  }
+  try{
+    new URL(url);
+  }catch(e){
+    status.style.color='var(--green)';
+    status.textContent='Fehler: Ungültige Ollama-Adresse.';
+    return;
+  }
+  if(!model){
+    status.style.color='var(--green)';
+    status.textContent='Fehler: Bitte einen Modellnamen eingeben.';
+    return;
+  }
+
+  localStorage.setItem('lara_ollama_url',url);
+  localStorage.setItem('lara_ollama_model',model);
+  status.style.color='var(--green)';
+  status.textContent='Gespeichert: Ollama-Adresse und Modellname wurden dauerhaft gespeichert.';
+}
+
+function loadSettings(){
+  const savedOllamaUrl=localStorage.getItem('lara_ollama_url');
+  const savedModel=localStorage.getItem('lara_ollama_model');
+  const savedApiUrl=localStorage.getItem('lara_api_url');
+
+  if(savedOllamaUrl){
+    document.getElementById('ollamaUrl').value=savedOllamaUrl;
+  }
+  if(savedModel){
+    document.getElementById('modelName').value=savedModel;
+  }
+  if(savedApiUrl){
+    document.getElementById('apiUrl').value=savedApiUrl;
+  }
+}
+
+window.addEventListener('DOMContentLoaded',loadSettings);
+</script>
+</body>
+</html>
