@@ -25,6 +25,7 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,6 +162,7 @@ private fun LaraHubApp() {
         mutableStateOf(
             when {
                 initialKeySaved -> "Zugangsdaten sind verschlüsselt auf diesem Gerät gespeichert."
+                selectedProvider == AiProvider.OPENCLAW -> "Für das OpenClaw-Gateway wird ein Gateway Token benötigt."
                 selectedProvider.requiresApiKey -> "Für diesen Anbieter muss ein API-Schlüssel gespeichert werden."
                 selectedProvider == AiProvider.CUSTOM -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
                 else -> "Ollama benötigt normalerweise keinen API-Schlüssel."
@@ -177,6 +179,12 @@ private fun LaraHubApp() {
     var showModelPicker by remember { mutableStateOf(false) }
     val lines = remember { mutableStateListOf<ChatLine>().apply { addAll(loadMessages(context)) } }
     val scope = rememberCoroutineScope()
+    val openClawConversationId = remember {
+        val prefs = context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE)
+        prefs.getString("openclaw_conversation_id", null) ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString("openclaw_conversation_id", it).apply()
+        }
+    }
 
     fun addMessage(role: String, text: String) {
         lines.add(ChatLine(role, text, nowLabel()))
@@ -193,6 +201,7 @@ private fun LaraHubApp() {
         hasSavedApiKey = saved
         apiKeyStatus = when {
             saved -> "Zugangsdaten sind verschlüsselt auf diesem Gerät gespeichert."
+            provider == AiProvider.OPENCLAW -> "Für das OpenClaw-Gateway wird ein Gateway Token benötigt."
             provider.requiresApiKey -> "Für diesen Anbieter muss ein API-Schlüssel gespeichert werden."
             provider == AiProvider.CUSTOM -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
             else -> "Ollama benötigt normalerweise keinen API-Schlüssel."
@@ -308,7 +317,15 @@ private fun LaraHubApp() {
                                             val selectedModel = model.ifBlank { discovery.models.firstOrNull().orEmpty() }
                                             if (selectedModel.isBlank()) error("Der Server meldet keine Modelle. Bitte Modellnamen prüfen.")
                                             if (model.isBlank()) model = selectedModel
-                                            val answer = ApiConnection.chat(context, selectedProvider, endpoint, selectedModel, question, discovery.mode)
+                                            val answer = ApiConnection.chat(
+                                                context,
+                                                selectedProvider,
+                                                endpoint,
+                                                selectedModel,
+                                                question,
+                                                discovery.mode,
+                                                if (selectedProvider == AiProvider.OPENCLAW) openClawConversationId else null
+                                            )
                                             persistConfig()
                                             addMessage("LARA / $selectedModel", answer)
                                             val apiLabel = if (selectedProvider == AiProvider.OLLAMA) "Ollama" else selectedProvider.label
@@ -416,7 +433,15 @@ private fun LaraHubApp() {
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("API- / Server-Adresse") },
                             placeholder = {
-                                Text(selectedProvider.defaultEndpoint.ifBlank { "https://dein-server.example/v1" })
+                                Text(
+                                    selectedProvider.defaultEndpoint.ifBlank {
+                                        if (selectedProvider == AiProvider.OPENCLAW) {
+                                            "http://<Gateway-IP>:18789/v1"
+                                        } else {
+                                            "https://dein-server.example/v1"
+                                        }
+                                    }
+                                )
                             },
                             singleLine = true
                         )
@@ -432,18 +457,26 @@ private fun LaraHubApp() {
                                 Text(if (checking) "Prüfe …" else "Verbinden / Modelle laden")
                             }
                             if (availableModels.isNotEmpty()) {
-                                OutlinedButton(onClick = { showModelPicker = true }) { Text("Modell wählen") }
+                                OutlinedButton(onClick = { showModelPicker = true }) {
+                                    Text(if (selectedProvider == AiProvider.OPENCLAW) "Agent wählen" else "Modell wählen")
+                                }
                             }
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
                         Divider()
                         if (selectedProvider.requiresApiKey || selectedProvider == AiProvider.CUSTOM) {
-                            Text("Zugangsdaten · ${selectedProvider.label}", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token · OpenClaw"
+                                else "API-Schlüssel · ${selectedProvider.label}",
+                                style = MaterialTheme.typography.titleMedium
+                            )
                             OutlinedTextField(
                                 value = apiKeyInput,
                                 onValueChange = { apiKeyInput = it },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("API-Schlüssel eingeben") },
+                                label = {
+                                    Text(if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token eingeben" else "API-Schlüssel eingeben")
+                                },
                                 visualTransformation = PasswordVisualTransformation(),
                                 singleLine = true
                             )
@@ -463,7 +496,9 @@ private fun LaraHubApp() {
                                 },
                                 enabled = apiKeyInput.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("Schlüssel sicher speichern") }
+                            ) {
+                            Text(if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token sicher speichern" else "API-Schlüssel sicher speichern")
+                        }
                             TextButton(
                                 onClick = {
                                     try {
@@ -479,16 +514,26 @@ private fun LaraHubApp() {
                                 },
                                 enabled = hasSavedApiKey,
                                 modifier = Modifier.fillMaxWidth()
-                            ) { Text("Gespeicherten Schlüssel entfernen") }
+                            ) {
+                                Text(if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token entfernen" else "Gespeicherten Schlüssel entfernen")
+                            }
                         } else {
                             Text("Ollama läuft lokal und benötigt normalerweise keinen API-Schlüssel.")
                         }
                         Text(
                             "Sicherheit: AES-GCM mit Geräteschlüssel im Android Keystore. " +
-                                "Schlüssel bleiben lokal gespeichert und werden nur über HTTPS übertragen. " +
-                                "Für die lokale Ollama-Verbindung bleibt das Schlüsselfeld leer.",
+                                "Zugangsdaten bleiben lokal gespeichert. Anbieter-Schlüssel werden nur über HTTPS übertragen; " +
+                                "OpenClaw darf HTTP nur im privaten LAN oder auf localhost nutzen.",
                             style = MaterialTheme.typography.bodySmall
                         )
+                        if (selectedProvider == AiProvider.OPENCLAW) {
+                            Text(
+                                "Achtung: Ein OpenClaw-Gateway-Token kann weitreichende Operator-Rechte besitzen. " +
+                                    "Nur mit deinem eigenen Gateway verbinden; für Verbindungen außerhalb des privaten Netzes HTTPS verwenden.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                         Divider()
                         Text("Automate von LlamaLab", style = MaterialTheme.typography.titleMedium)
                         OutlinedTextField(
