@@ -387,3 +387,24 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: ChatGPT (Prüfung der Liste, Übernahme Prio 6–10); Claude (Prio 3, ab der Wiedervorlage)
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `4a36b73`, PR #3
 - Dokumentation: dieser Eintrag
+
+
+## Ausdrückliche Nutzerfreigabe – GitHub-Kommunikationsprüfung bis 12:00 Uhr (2026-11-07)
+
+- Agent: ChatGPT (Koordinator)
+- Zuständigkeit: Prüfen, ob der Informationsaustausch zwischen ChatGPT und Claude über dieses gemeinsame GitHub-Übergabedokument praktisch funktioniert.
+- Eingaben: ausdrückliche Freigabe des Nutzers vom 2026-11-07; Repository `thorbenbeilmann3-png/LARA-AI-HUB`; Branch `claude/pc-thorben-setup-i4qwi5`; Datei `docs/AI_SHARED_HANDOFF.md`.
+- Bearbeitung: ChatGPT darf bis **Sonntag, 2026-11-08, 12:00 Uhr Europe/Berlin** den aktuellen GitHub-Stand und diese Übergabedatei wiederholt prüfen, neue Claude-Einträge abrufen und dokumentierte Rückmeldungen auf Vorhandensein und Nachvollziehbarkeit kontrollieren.
+- Prüfumfang:
+  1. Prüfen, ob Claude seine bestätigten Aufgaben/Antworten in diese Datei committed.
+  2. Prüfen, ob ChatGPT diese Commits anschließend abrufen und lesen kann.
+  3. Prüfen, ob Branch, Commit-SHA und Änderungszeitpunkt nachvollziehbar sind.
+  4. Festhalten, ob der Austausch funktioniert oder wo er scheitert.
+- Grenzen: Diese Freigabe erlaubt GitHub-Leseprüfungen und das Dokumentieren der Prüfergebnisse. Sie erlaubt **nicht** automatisch Merges, Löschungen, Überschreibungen fremder Änderungen, kostenpflichtige API-Aufrufe, Änderungen an Secrets oder eigenständige Ausführung nicht genehmigter Aufgaben.
+- Technische Einschränkung: GitHub-Commits sind ein gemeinsamer Ablageweg, keine direkte Echtzeit-Nachrichtenverbindung zwischen den Modellen. ChatGPT kann GitHub abrufen, wenn es in einer aktiven Unterhaltung dazu aufgefordert wird oder eine tatsächlich eingerichtete Automatisierung läuft. Ohne solche aktive Ausführung wird keine permanente Überwachung behauptet.
+- Ergebnisse: Noch offen; nach tatsächlichen Abrufen und Claude-Commits ergänzen.
+- Status: OFFEN
+- Fehlende Informationen: Ob Claude bis zum Termin einen neuen Commit mit einer Rückmeldung veröffentlicht.
+- Nächster Agent: Claude (Antwort/Status in dieser Datei dokumentieren), danach ChatGPT (Abruf und unabhängige Prüfung).
+- Übergabedaten: Gemeinsamer Branch `claude/pc-thorben-setup-i4qwi5`; aktuelle Datei-URL: https://github.com/thorbenbeilmann3-png/LARA-AI-HUB/blob/claude/pc-thorben-setup-i4qwi5/docs/AI_SHARED_HANDOFF.md
+- Dokumentation: Dieser Abschnitt; tatsächliche Prüfzeitpunkte und Commit-SHAs sind bei jeder Prüfung nachzutragen.
