@@ -378,7 +378,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                 apiMode = result.mode
                 availableModels = result.models
                 if (model.isBlank() || (result.models.isNotEmpty() && model !in result.models)) {
-                    model = result.models.firstOrNull().orEmpty()
+                    model = ModelChoice.pickDefault(result.models)
                 }
                 persistConfig()
                 val apiLabel = if (selectedProvider == AiProvider.OLLAMA) {
@@ -387,7 +387,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                 val itemLabel = if (selectedProvider == AiProvider.OPENCLAW) "Agent(en)" else "Modell(e)"
                 status = "Verbunden: $apiLabel · ${result.models.size} $itemLabel gefunden"
             } catch (e: Exception) {
-                status = "Verbindung fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
+                status = "Verbindung fehlgeschlagen – " + ProviderErrors.describe(selectedProvider.label, e)
             } finally {
                 checking = false
             }
@@ -520,7 +520,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                                             val discovery = ApiConnection.discover(context, selectedProvider, endpoint)
                                             apiMode = discovery.mode
                                             if (availableModels != discovery.models) availableModels = discovery.models
-                                            val selectedModel = model.ifBlank { discovery.models.firstOrNull().orEmpty() }
+                                            val selectedModel = model.ifBlank { ModelChoice.pickDefault(discovery.models) }
                                             if (selectedModel.isBlank()) error("Der Server meldet keine Modelle. Bitte Modellnamen prüfen.")
                                             if (model.isBlank()) model = selectedModel
                                             val answer = ApiConnection.chat(
@@ -542,7 +542,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                                             val apiLabel = if (selectedProvider == AiProvider.OLLAMA) "Ollama" else selectedProvider.label
                                             status = "Antwort erhalten · $apiLabel"
                                         } catch (e: Exception) {
-                                            status = "Fehler: ${e.message ?: "Verbindung fehlgeschlagen"}"
+                                            status = "Fehler – " + ProviderErrors.describe(selectedProvider.label, e)
                                         } finally {
                                             busy = false
                                         }
