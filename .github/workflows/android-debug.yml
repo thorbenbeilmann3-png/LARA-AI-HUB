@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # write is needed only to publish the APK as a pre-release download
+  contents: write
 
 jobs:
   build:
@@ -43,3 +44,18 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish as "neueste Version" download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=lara-debug-latest
+          cp app/build/outputs/apk/debug/app-debug.apk LARA-debug.apk
+          SUM=$(sha256sum LARA-debug.apk | cut -d' ' -f1)
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" LARA-debug.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "LARA Debug – neueste Version" \
+            --notes "Automatisch gebaut aus ${GITHUB_REF_NAME} @ ${GITHUB_SHA}. Debug-Version, nur fuer Tests. SHA-256: ${SUM}"
