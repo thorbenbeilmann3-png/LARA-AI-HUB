@@ -97,3 +97,81 @@ Kurz, konkret und überprüfbar. Keine pauschalen Aussagen wie „alles funktion
 - Fehlende Informationen / BLOCKIERT: Gerätetest-Ergebnisse vom Nutzer
 - Nächster Agent: Claude (Core-Gateway für das lokale Modell); ChatGPT optional als Prüfer
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Basis `feature/android-secure-api-key-storage`
+
+### 2026-11-07 17:15 UTC (18:15 Europe/Berlin) – Technischer Befund, Projektstand und Tests
+- Agent/Assistent: Claude (Claude Code, Cloud-Sitzung, kein Zugriff auf Pixel oder Windows-PC)
+- Zuständigkeit: Umsetzer für PR #3; dieser Eintrag ist eine Bestandsaufnahme, keine Codeänderung
+- Eingaben und Ausgangs-Commit: Branch `claude/pc-thorben-setup-i4qwi5` bei `d42e20a`, Basis `feature/android-secure-api-key-storage` (`6ab7c8a`), PR #3 (Draft, nicht gemergt)
+
+#### Commits auf diesem Branch (Zeiten in UTC, alle in PR #3)
+| SHA | Inhalt |
+|---|---|
+| `d6e8b98` | Worker: Token für `/v1/chat`, serverseitige Freigaben, CI-Importfehler behoben |
+| `08ed404` | Node-Server: `127.0.0.1`, SSRF-Positivliste, Host-Prüfung, kein CORS `*` |
+| `cb7feb0` | Android: Klartext-HTTP nur Loopback, Standard `127.0.0.1:12434` |
+| `4285334` | Android: Chatverlauf wird mitgesendet |
+| `91d3294` | Android: App-Sperre (BiometricPrompt), API-Schlüssel an Anmeldung gebunden |
+| `eb3105f` | Core: Auftragsspeicher, Fortschritt, Token-Protokoll |
+| `f2bf748` | CI: APK als Pre-Release `lara-debug-latest` |
+| `d4f3816` | Core: verifizierter Modellwechsel (Übergabepaket + Prüfsumme) |
+| `e0ca9f3` | Android: Monitor-Tab (Tokens, Kontext, Core-Aufträge) |
+| `0bdde5e` | (Nutzer) dieses Übergabeprotokoll |
+| `886ae95` | Android: falscher Testwert korrigiert (64,1 %) |
+| `09230dd` | Claude-Prüfeintrag in diesem Dokument |
+| `77e57b5` | Core: Gateway für das lokale Modell mit Token-Erfassung |
+| `8aee744` | Core: minimales `/health`, Rate Limiting, Sperre nach falschen Tokens |
+| `d42e20a` | Core: Startskript `run_core.py` für Pydroid |
+
+#### Tests, die tatsächlich ausgeführt wurden (2026-11-07, ca. 17:12 UTC, auf `d42e20a`)
+| Test | Befehl / Ort | Ergebnis |
+|---|---|---|
+| Python-Worker/Core | `cd python-worker && pytest -q` (Python 3.13, lokal) | **86 passed** |
+| Node-Server | `npm test` (Node 22, lokal) | **11 passed**, 0 failed |
+| Python-Bridge | `python -m unittest` im Branch `feature/automate-python-bridge` (`6cd8c40`) | **6 Tests OK** |
+| Kotlin-Logik ohne Android | JVM-Hilfsprojekt, Gradle 8.14 | ChatHistory 9, CleartextPolicy 3, SessionLock 6 → **18 passed** |
+| Core-Start echt | `run_core.py` lokal auf Port 8011, `curl` | `/health` 200, `/v1/jobs` ohne Token 401, mit Token 200, Token-Dateien `0600` |
+| Android-Unit-Tests + APK-Build | GitHub Actions „Android debug APK“, Run `42394430325` auf `09230dd` | **success** (inkl. TokenUsageTest). Spätere Commits ändern keinen Android-Code |
+| Python/Node in CI | „Python control plane tests“, „Node server tests“ auf `77e57b5` | **success** |
+| Secret-Scan | `git grep` nach typischen Schlüsselmustern, eingecheckte DB/Token-Dateien | **0 Treffer** |
+| **Nicht ausgeführt** | Alles auf dem Pixel (App-Sperre, Keystore-Übernahme, Chat gegen `127.0.0.1:12434`, Monitor, Core in Pydroid, Automate); alles auf Windows; echte Aufrufe von Cloud-Anbietern | **NOT TESTED** |
+
+#### Erledigt (im Code, mit Tests, ohne Gerätetest)
+Die vier bekannten Sicherheitslücken aus diesem Dokument sind im Code geschlossen: Worker-Anmeldung, serverseitige Freigaben, SSRF/`0.0.0.0` im Node-Server, Klartext-HTTP in der App. Außerdem fertig: App-Sperre, Chatverlauf, Auftragsspeicher mit berechnetem Fortschritt, Token- und Kontextüberwachung, verifizierter Modellwechsel, Monitor-Tab, lokales Gateway, Rate Limiting, Core-Start.
+
+#### Offene Aufgaben
+1. **Gerätetests auf dem Pixel** (Voraussetzung für jedes PASS auf dem Gerät).
+2. Gedächtnis-Grundlage (Einträge mit Vertrauensstatus, Export `LARA_MEMORY/*.md`).
+3. Automate-Flow für Bridge-Health/Echo mit Timeout und Fehlerweg (nur als Anleitung, weil `.flo` nicht validierbar ist).
+4. Bridge (Branch `feature/automate-python-bridge`, PR #2) und Core zusammenführen. In Pydroid laufen sie voraussichtlich nicht gleichzeitig (ungeprüft).
+5. Freigabe-Oberfläche in der App (Approver-Token, JA/NEIN).
+6. Weitere Anbieter im Gateway. Das ist erst nach Freigabe des Nutzers für kostenpflichtige API-Zugänge möglich.
+7. ARENA, Agenten, Recherchefilter und Windows-Anbindung sind noch nicht begonnen. Der PC-Fernzugriff bleibt gesperrt.
+
+#### Erkannte Fehler und Sicherheitsbefunde (nicht kritisch, nicht behoben)
+| Schwere | Befund | Ort | Empfehlung |
+|---|---|---|---|
+| Mittel | Die Übernahme der v1-Schlüssel ist „alles oder nichts“: Ist ein einziger alter Eintrag unlesbar, wird nichts übernommen, und die alten Schlüssel sind dann in der App nicht nutzbar. Die Daten gehen nicht verloren | `ApiKeyStore.migrateV1` | Lesbare Einträge übernehmen, unlesbare melden |
+| Mittel | Das Rate Limiting zählt nach Client-Adresse. Auf dem Handy sind alle lokalen Apps `127.0.0.1`. Eine fremde App kann mit 10 falschen Tokens LARA für 5 Minuten aussperren (Verfügbarkeit, kein Datenleck) | `python-worker/app/ratelimit.py` | Sperre an den Token-Hash binden oder nur verzögern |
+| Mittel | Der Worker sendet den Gemini-Schlüssel als URL-Parameter `?key=`. Er kann so in Logs landen. Die App nutzt korrekt den Header `x-goog-api-key` | `python-worker/app/main.py` (`/v1/chat`) | Header verwenden (Header-Name nach Kenntnisstand; Google-Doku hier gesperrt, ungeprüft) |
+| Niedrig | `contents: write` gilt für den ganzen Android-Build-Job, auch für Drittanbieter-Actions | `.github/workflows/android-debug.yml` | Veröffentlichung in einen eigenen Job mit Schreibrecht auslagern |
+| Niedrig | Der Node-Server hat keine Anmeldung. Er ist nur über Loopback und mit Host-Prüfung erreichbar, jede App auf dem Gerät kann den erlaubten Modellserver darüber nutzen | `index.js` | Token einführen, wenn das Web-Frontend weiter genutzt wird |
+| Niedrig | Die Bridge gibt beim ersten Start den Token im Klartext in der Konsole aus (Screenshot-Risiko) | `lara_bridge.py` (PR #2) | Nur Dateipfad ausgeben |
+| Info | Die Übergabeprüfung belegt korrekte Übertragung, nicht inhaltliches Verständnis | `docs/MODELLWECHSEL.md` | Ist dokumentiert |
+
+#### Doku, die nicht mehr zum Code passt (nicht verändert, nur gemeldet)
+- `docs/AI_HANDOVER.md` Z. 41, 187–188, 199: „gebunden an `0.0.0.0`“, Standard-Endpunkt `10.179.130.230`, `usesCleartextTraffic="true"`. Das ist **veraltet** seit `08ed404` und `cb7feb0`.
+- `README.md` „Not implemented yet“: Mehrere Anbieter, verschlüsselter Schlüsselspeicher und der Python-Worker sind inzwischen vorhanden.
+- Die vom Nutzer genannte WLAN-Adresse `10.186.32.74:12434` ist absichtlich **nicht** im Code. Auf dem Pixel gilt `127.0.0.1:12434` (vom Nutzer bestätigt: Server läuft auf dem Pixel).
+
+#### Empfohlene nächste Schritte (Reihenfolge)
+1. Nutzer: APK installieren (`releases/download/lara-debug-latest/LARA-debug.apk`) und die Gerätetests aus `docs/APP-SPERRE.md` und `docs/ANDROID-NETZWERK-SICHERHEIT.md` durchführen.
+2. Claude: die drei mittleren Befunde beheben (Migration, Rate-Limit-Schlüssel, Gemini-Header), je mit Test.
+3. Nutzer: Core in Pydroid nach `docs/CORE-AUF-DEM-PIXEL.md` starten und Ergebnis bzw. Fehlertext melden.
+4. Claude: Gedächtnis-Grundlage, danach die Automate-Anleitung.
+5. ChatGPT: unabhängige Prüfung von PR #3 commitweise, besonders `91d3294` (Keystore/Biometrie) und `d4f3816` (Übergabeprüfung).
+
+- Unabhängige Prüfung: ausstehend (ChatGPT)
+- Status: OFFEN
+- Fehlende Informationen / BLOCKIERT: Gerätetest-Ergebnisse; Pydroid-Installierbarkeit von `pydantic`
+- Nächster Agent: ChatGPT (Prüfung), danach Claude (Befunde beheben)
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `d42e20a`, PR #3
