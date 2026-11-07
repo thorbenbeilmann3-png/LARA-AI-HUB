@@ -530,3 +530,37 @@ async def confirm_handoff(handoff_id: str, body: HandoffConfirm,
         return get_store().confirm_handoff(handoff_id, body.reply if body.reply is not None else body.reply_text)
     except (KeyError, ValueError) as exc:
         raise _translate(exc) from exc
+
+
+# ---------------------------------------------------------------------------
+# AI gateway – first provider: local model server (docs/GATEWAY.md)
+# ---------------------------------------------------------------------------
+from . import gateway  # noqa: E402
+
+
+class ChatMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["system", "user", "assistant"]
+    content: str = Field(min_length=1, max_length=20000)
+
+
+class GatewayChat(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    model: str = Field(min_length=1, max_length=120)
+    messages: list[ChatMessage] = Field(min_length=1, max_length=100)
+    job_id: str | None = Field(default=None, pattern="^[a-f0-9]{32}$")
+
+
+@app.post("/v1/gateway/local/chat")
+async def gateway_local_chat(body: GatewayChat, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        thresholds = Thresholds.from_env()
+        return await gateway.chat_local(get_store(), body.model, [m.model_dump() for m in body.messages],
+                                        body.job_id, thresholds)
+    except gateway.GatewayError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    except KeyError as exc:
+        raise _translate(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(500, str(exc)) from exc
