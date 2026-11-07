@@ -139,45 +139,59 @@ internal object ApiKeyStore {
             deleteKey(KEY_ALIAS_V2)
             values.clear()
         }
-        val migrated = migrateV1(context, values)
+        val migration = migrateV1(context, values)
         SessionVault.unlock(values)
-        val message = when {
-            invalidated -> "Die Geräte-Anmeldung wurde geändert (z. B. neuer Fingerabdruck). " +
-                "Aus Sicherheitsgründen sind die gespeicherten API-Schlüssel ungültig und müssen neu eingegeben werden."
-            migrated > 0 -> "$migrated vorhandene(r) Schlüssel wurde(n) auf die geschützte Speicherung umgestellt."
-            else -> null
-        }
-        return UnlockResult(values.size, migrated, message)
+        val message = listOfNotNull(
+            if (invalidated) "Die Geräte-Anmeldung wurde geändert (z. B. neuer Fingerabdruck). " +
+                "Aus Sicherheitsgründen sind die gespeicherten API-Schlüssel ungültig und müssen neu eingegeben werden." else null,
+            if (migration.migrated > 0) "${migration.migrated} vorhandene(r) Schlüssel wurde(n) auf die geschützte Speicherung umgestellt." else null,
+            if (migration.failed.isNotEmpty()) "Nicht lesbar und daher nicht übernommen: ${migration.failed.joinToString()}. " +
+                "Bitte diese Schlüssel neu eingeben." else null
+        ).joinToString(" ").ifBlank { null }
+        return UnlockResult(values.size, migration.migrated, message)
     }
 
     // ---------------------------------------------------------------- internals
 
-    private fun migrateV1(context: Context, values: MutableMap<String, String>): Int {
+    /**
+     * Re-encrypts every readable v1 entry with the auth-bound v2 key. Readable entries
+     * are moved one by one (v1 copy removed only after the v2 write succeeded).
+     * Unreadable entries stay in v1 untouched and are reported; the v1 key is deleted
+     * only when no v1 entry is left.
+     */
+    private fun migrateV1(context: Context, values: MutableMap<String, String>): MigrationResult {
         val v1 = context.getSharedPreferences(PREFS_V1, Context.MODE_PRIVATE)
         val ids = storedProviderIds(v1)
-        if (ids.isEmpty()) return 0
-        val plain = mutableMapOf<String, String>()
+        if (ids.isEmpty()) return MigrationResult(0, emptyList())
+        var migrated = 0
+        val failed = mutableListOf<String>()
         for (providerId in ids) {
             val value = try {
                 decrypt(v1, providerId, KEY_ALIAS_V1)
             } catch (_: Exception) {
                 null
-            } ?: return 0 // keep v1 untouched if anything is unreadable
-            plain[providerId] = value
-        }
-        val v2 = context.getSharedPreferences(PREFS_V2, Context.MODE_PRIVATE).edit()
-        for ((providerId, value) in plain) {
+            }
+            if (value == null) {
+                failed.add(providerId)
+                continue
+            }
             val keys = keysFor(providerId)
             val (ciphertext, iv) = encrypt(providerId, value)
-            v2.putString(keys.first, ciphertext).putString(keys.second, iv)
+            val written = context.getSharedPreferences(PREFS_V2, Context.MODE_PRIVATE).edit()
+                .putString(keys.first, ciphertext).putString(keys.second, iv).commit()
+            if (!written) {
+                failed.add(providerId)
+                continue
+            }
+            v1.edit().remove(keys.first).remove(keys.second).commit()
+            values[providerId] = value
+            migrated++
         }
-        if (!v2.commit()) return 0
-        // Only now remove the old, unprotected copies.
-        v1.edit().clear().commit()
-        deleteKey(KEY_ALIAS_V1)
-        values.putAll(plain)
-        return plain.size
+        if (storedProviderIds(v1).isEmpty()) deleteKey(KEY_ALIAS_V1)
+        return MigrationResult(migrated, failed)
     }
+
+    private data class MigrationResult(val migrated: Int, val failed: List<String>)
 
     private fun storedProviderIds(prefs: android.content.SharedPreferences): List<String> {
         val ids = mutableListOf<String>()

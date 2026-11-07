@@ -11,7 +11,7 @@
 
 - Neuer Keystore-Schlüssel `lara_api_key_aes_v2_auth` (AES-GCM) mit `setUserAuthenticationRequired(true)`. Er ist nach einer Anmeldung 300 s nutzbar. Ab Android 11 sind „starke“ Biometrie oder die Geräte-Anmeldung erlaubt.
 - `setInvalidatedByBiometricEnrollment(true)`: Wird ein **neuer Fingerabdruck** hinzugefügt, macht Android den Schlüssel ungültig. LARA meldet das, entfernt die nicht mehr lesbaren Daten, und du gibst die API-Schlüssel neu ein. Das ist so gewollt.
-- **Übernahme:** Schlüssel aus der früheren Speicherung (v1, ohne Anmeldepflicht) werden beim ersten Entsperren neu verschlüsselt. Den alten Schlüssel und die alten Daten löscht LARA **erst, wenn alle Einträge erfolgreich übertragen wurden**. Bei einem Fehler bleibt v1 unverändert.
+- **Übernahme:** Schlüssel aus der früheren Speicherung (v1, ohne Anmeldepflicht) werden beim ersten Entsperren **einzeln** neu verschlüsselt. Jeder lesbare Eintrag wird übernommen, und seine v1-Kopie wird erst nach dem erfolgreichen Schreiben entfernt. Nicht lesbare Einträge bleiben unverändert in v1, LARA nennt sie mit Namen. Den alten Keystore-Schlüssel löscht LARA erst, wenn kein v1-Eintrag mehr übrig ist. Nur auf dem Gerät prüfbar, **NOT TESTED**.
 - Gesichtserkennung: LARA lässt nur zu, was Android als „starke“ Biometrie einstuft. Ob das Gesichtsentsperren des Pixel 9a dazugehört, ist **nicht geprüft**. Andernfalls bietet die Abfrage Fingerabdruck oder PIN an.
 - Android 9/10: Dort ist die Kombination „starke Biometrie oder PIN“ nicht verfügbar. LARA fragt dann nach „Biometrie oder PIN“, und für die geschützten Schlüssel gilt die PIN.
 
