@@ -438,3 +438,28 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
   - Keine sicherheitsrelevante Schutzmaßnahme umgehen und keine Tests oder Erfolge erfinden.
   - Vor jedem relevanten Claude-Auftrag den eigenen Arbeitsstand mit Commit-SHA, Dateien, Tests und offenen Punkten hier eintragen.
   - Statuswerte in neuen Übergabeberichten ausschließlich: OFFEN / ANNAHME / FEHLER. Nicht verfügbare Informationen ausdrücklich als BLOCKIERT kennzeichnen.
+
+
+## Feature-Idee / Auftrag: LARA GitHub-Arbeitsbereich und aufgabenbezogene KI-Provider
+
+- Agent: ChatGPT (Koordinator)
+- Zuständigkeit: Konzept und spätere Umsetzung eines kontrollierten GitHub-Arbeitsbereichs innerhalb von LARA.
+- Eingaben: Nutzerwunsch vom 2026-11-07: LARA soll selbstständig mit GitHub arbeiten können; dafür soll es einen separaten Ordnerbereich geben, in dem KI-API-/Provider-Anbindungen verwaltet werden. Nutzeraufgaben sollen in den jeweils passenden Ordner gelangen.
+- Bearbeitung / Zielbild:
+  1. LARA erhält eine eigene GitHub-Projektansicht mit Repository-Auswahl, Branch-/Dateiübersicht, Änderungen, Commits, Pull Requests und Status.
+  2. Ein klar abgegrenzter Arbeitsbereich, Vorschlag: `lara_workspace/`.
+  3. Aufgaben-Eingang: `lara_workspace/tasks/inbox/`; jede Aufgabe als eigene Markdown- oder JSON-Datei mit ID, Ziel, Beschreibung, Priorität, erlaubten Dateien/Ordnern, zuständigem Modell/Agent, Status, Tests und Freigabestufe.
+  4. Aktive Aufgaben: `lara_workspace/tasks/active/`; erledigte Aufgaben: `lara_workspace/tasks/done/`; blockierte Aufgaben: `lara_workspace/tasks/blocked/`.
+  5. Provider-Verzeichnis: `lara_workspace/providers/` mit nicht geheimen Provider-Metadaten, Modellnamen, Fähigkeiten, Kostenhinweisen und Status. Getrennte Adapter für OpenAI, Anthropic/Claude, Gemini und lokale/OpenAI-kompatible Modelle.
+  6. API-Schlüssel und Tokens niemals im Repository, in Aufgaben-Dateien, Logs oder Commits speichern. Geheimnisse ausschließlich lokal/verschlüsselt (bevorzugt Android Keystore bzw. geeigneter Secret Store); im Repository nur Beispieldateien ohne echte Werte.
+  7. Agenten-/Rollenprofile: `lara_workspace/agents/`; Regeln und Fähigkeiten, keine Zugangsdaten.
+  8. Ergebnisablage je Aufgabe: Plan, geänderte Dateien, Commit-SHA, Testergebnisse, Quellen, Risiken und Übergabe an ChatGPT/Claude.
+  9. LARA soll Aufgaben anhand Typ und Berechtigungen dem passenden Provider/Agenten zuweisen können. Nutzer kann den Zielordner/Agent bei Bedarf festlegen.
+  10. Schreibzugriffe standardmäßig auf den zugewiesenen Arbeitsbereich/Branch begrenzen. Vor Merge, Löschen, Veröffentlichung, externen Aktionen oder kostenpflichtigen API-Aufrufen gesonderte Nutzerfreigabe verlangen.
+  11. Vor Umsetzung zunächst Architektur und bestehende Repository-Struktur prüfen; keine bestehenden Verzeichnisse ungeprüft überschreiben oder parallel ein zweites System bauen.
+- Ergebnisse: Zielbild und Ordnerkonzept festgehalten; Implementierung noch nicht begonnen.
+- Status: OFFEN
+- Fehlende Informationen: Noch festzulegen ist, ob der Nutzer mit „jeweiligen Ordner“ einzelne Aufgabenordner pro Projekt, pro KI-Anbieter oder beides meint. Sicherer Vorschlag: Aufgaben nach Projekt/Typ sortieren und Provider-Zuordnung als Metadaten führen, statt Aufgaben fest an einen Anbieterordner zu binden.
+- Nächster Agent: ChatGPT prüft Repository-Struktur und bestehende Architektur; Claude erhält den Konzeptstand für die spätere technische Architektur-/Integrationsprüfung.
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`; diese Datei ist die gemeinsame Übergabe.
+- Dokumentation: API-Schlüssel sind Zugangsdaten und gehören ausdrücklich nicht in GitHub. GitHub enthält nur Code, Vorlagen, Aufgabenbeschreibungen und nicht geheime Konfiguration.
