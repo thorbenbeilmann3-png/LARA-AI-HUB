@@ -50,7 +50,7 @@ class TokenUsageTest {
         assertEquals("Beobachten", ContextGauge.read(700, 1000).status)
         assertEquals("Übergabe vorbereiten", ContextGauge.read(800, 1000).status)
         assertEquals("Wechsel einleiten", ContextGauge.read(900, 1000).status)
-        assertEquals(64.0, ContextGauge.read(82000, 128000).percent!!, 0.01)
+        assertEquals(64.1, ContextGauge.read(82000, 128000).percent!!, 0.01)
         assertEquals(46000, ContextGauge.read(82000, 128000).remaining)
     }
 
