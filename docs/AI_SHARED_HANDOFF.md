@@ -413,3 +413,28 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Agent: Claude
 - Ergebnis: GitHub Actions „Android debug APK“, Run `42396099033` (Nr. 50) auf `23a8789` (Schlüssel-Übernahme einzeln): **success** (`:app:testDebugUnitTest` und `:app:assembleDebug`). Die Release-APK `lara-debug-latest` ist damit auf diesem Stand. Das Verhalten auf dem Gerät bleibt **NOT TESTED**.
 - Damit sind in den beiden Einträgen oben „Anthropic-Anschluss robust gemacht“ und „Morgenübergabe“ die Angaben „läuft“ bzw. „offen“ für Run 50 erledigt.
+
+
+## Erweiterte Arbeitsfreigabe für ChatGPT – Umsetzung wie ein Projektmitarbeiter (Nutzerfreigabe: 2026-11-07)
+
+- Agent: ChatGPT
+- Zuständigkeit: Koordinator und ausführender Mitarbeiter für LARA-AI-HUB-Aufgaben, soweit die verfügbaren GitHub-/Projektwerkzeuge und Berechtigungen dies erlauben.
+- Eingaben: Vom Nutzer ausdrücklich erteilte Aufträge sowie genehmigte, offene Aufgaben aus dieser Übergabedatei.
+- Bearbeitung:
+  1. ChatGPT darf ausdrücklich erteilte Aufträge selbstständig planen und umsetzen, statt lediglich Anleitungen oder Vorschläge zu liefern.
+  2. ChatGPT übernimmt bevorzugt einfache und mittlere Aufgaben. Claude bleibt für komplexe Architektur-, Programmier-, Integrations- und schwierige Sicherheitsaufgaben zuständig.
+  3. ChatGPT prüft vor jeder Änderung den aktuellen Branch, Dateiinhalt, relevante Änderungen und passende Tests.
+  4. Änderungen erfolgen grundsätzlich auf dem vorgesehenen Arbeitsbranch. Bei Konflikten, unklaren Anforderungen oder fehlender Berechtigung wird gestoppt und der konkrete Grund gemeldet.
+  5. ChatGPT dokumentiert jede relevante eigene Arbeit in dieser Datei und übergibt Claude die Ergebnisse, sobald sie für Claudes Arbeit relevant sind.
+  6. ChatGPT informiert Claude über den gemeinsamen GitHub-Eintrag/Commit; es wird nicht behauptet, Claude direkt benachrichtigt zu haben. Claude muss den aktuellen Stand selbst abrufen.
+  7. Nach Claude-Arbeit liest ChatGPT dessen Einträge und prüft Ergebnisse unabhängig, soweit die verfügbaren Werkzeuge dies erlauben.
+- Ergebnisse: ChatGPT liefert nach Möglichkeit fertige, getestete Änderungen mit Commit-SHA, geänderten Dateien, konkreten Testresultaten und offenen Punkten.
+- Status: OFFEN
+- Fehlende Informationen: Keine für diese Arbeitsregel. Einzelne Aufträge können weiterhin Rückfragen oder Freigaben erfordern.
+- Nächster Agent: ChatGPT für einfache/mittlere genehmigte Aufträge; Claude für ausdrücklich übergebene komplexe Aufgaben; danach jeweils unabhängige Prüfung.
+- Übergabedaten: Gemeinsamer Branch `claude/pc-thorben-setup-i4qwi5`; diese Datei ist die gemeinsame Informationsquelle.
+- Dokumentation und Grenzen:
+  - Diese Freigabe gilt für ausdrücklich erteilte Nutzeraufträge und bereits ausdrücklich genehmigte Aufgaben im Projekt, nicht als pauschale Erlaubnis für neue kostenpflichtige Dienste, API-Aufrufe, Käufe, externe Veröffentlichungen, Merges, Löschungen, Secrets oder irreversible Aktionen.
+  - Keine sicherheitsrelevante Schutzmaßnahme umgehen und keine Tests oder Erfolge erfinden.
+  - Vor jedem relevanten Claude-Auftrag den eigenen Arbeitsstand mit Commit-SHA, Dateien, Tests und offenen Punkten hier eintragen.
+  - Statuswerte in neuen Übergabeberichten ausschließlich: OFFEN / ANNAHME / FEHLER. Nicht verfügbare Informationen ausdrücklich als BLOCKIERT kennzeichnen.
