@@ -245,3 +245,73 @@ Jeder neue Eintrag muss alle Felder enthalten:
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, PR #3 (Draft, nicht gemergt)
 - Dokumentation: `docs/PYTHON-WORKER-SICHERHEIT.md` (Nachbesserung), `docs/APP-SPERRE.md` (Übernahme)
 
+
+
+## Verbindliche Aufgabenverteilung zwischen ChatGPT und Claude (Nutzerfreigabe: 2026-11-07)
+
+### Ziel
+Claude soll nur für anspruchsvolle Aufgaben eingesetzt werden. ChatGPT übernimmt einfache und mittlere Aufgaben selbst, soweit die verfügbaren Werkzeuge und Berechtigungen dies erlauben. Dadurch sollen Claude-Kontext und Claude-Tokens geschont werden.
+
+### Zuständigkeiten
+**ChatGPT – primärer Arbeitsassistent**
+- Dokumentation, Aufgabenlisten und GitHub-Projektstand lesen, prüfen und strukturieren.
+- Einfache bis mittlere Fehleranalyse und klar begrenzte Codeänderungen.
+- Kleinere Tests, Auswertungen, Texte und Konzepte.
+- Aufgaben in konkrete Schritte zerlegen und Ergebnisse dokumentieren.
+- Vor einer Claude-Übergabe prüfen, ob die Aufgabe selbst zuverlässig erledigt werden kann.
+
+**Claude – Spezialist für anspruchsvolle Aufgaben**
+- Komplexe Architekturänderungen und umfangreiche Refactorings.
+- Schwierige Programmierfehler und systemübergreifende Integrationen.
+- Anspruchsvolle Android-/Kotlin-/Python-Probleme.
+- Sicherheitsprobleme und Aufgaben, bei denen ChatGPT nachweislich nicht zuverlässig weiterkommt.
+
+### Token- und Kostenregeln
+- Claude nicht für einfache Fragen, Routine-Dokumentation oder kleine Standardaufgaben einsetzen.
+- Claude nur eine klar abgegrenzte Aufgabe mit den dafür notwendigen Dateien, Anforderungen und Fehlerprotokollen übergeben.
+- Keine unnötigen Wiederholungen und keine vollständige Kontextübertragung, wenn ein präziser Verweis auf diese Datei genügt.
+- Keine kostenpflichtigen API-Aufrufe und keine kostenpflichtigen Provideränderungen ohne ausdrückliche Zustimmung des Nutzers.
+- Qualität und Sicherheit haben Vorrang vor Tokenersparnis; ChatGPT darf eine Aufgabe nicht selbst übernehmen, wenn es dafür die nötige Fähigkeit oder Berechtigung nicht besitzt.
+
+### Gemeinsamer Ablauf
+1. ChatGPT koordiniert und erledigt einfache/mittlere Aufgaben.
+2. Wenn eine Aufgabe zu komplex ist, erstellt ChatGPT einen abgegrenzten Auftrag für Claude und dokumentiert ihn hier unter „Auftrag an Claude“.
+3. Claude liest vor Beginn diese Datei und den aktuellen Repository-/Branch-Stand.
+4. Claude dokumentiert Änderungen, betroffene Dateien, tatsächlich ausgeführte Tests, Commit-SHA und offene Punkte.
+5. ChatGPT liest die aktualisierte Datei und prüft Claudes Ergebnisse unabhängig.
+6. Kein Merge, Löschen, Überschreiben, Secret-Eintrag oder kostenpflichtiger API-Aufruf ohne ausdrückliche Freigabe.
+
+## Morgenübergabe – genehmigte Aufgaben und Entscheidungen zusammentragen (Nutzerfreigabe: 2026-11-07)
+
+### Auftrag an Claude
+- Zieltermin: **Sonntag, 2026-11-08, spätestens 12:00 Uhr Europe/Berlin**.
+- Prüfe den dir tatsächlich zugänglichen bisherigen Projekt- und Gesprächskontext auf Aufgaben und Entscheidungen, denen der Nutzer ausdrücklich zugestimmt hat.
+- Trenne sauber:
+  1. ausdrücklich genehmigte, noch offene Aufgaben;
+  2. bereits erledigte Aufgaben;
+  3. Aufgaben, die nur vorgeschlagen oder besprochen, aber nicht genehmigt wurden;
+  4. unklare oder widersprüchliche Zustimmungen.
+- Erstelle daraus eine priorisierte, nachvollziehbare Aufgabenliste. Nichts als genehmigt markieren, wenn die Zustimmung nicht belegbar ist.
+- Weise einfache und mittlere Aufgaben ChatGPT zu; Claude erhält nur komplexe Aufgaben.
+- Trage die Liste und den Bearbeitungsstand in diese Datei ein. Für jede Aufgabe Verantwortlichkeit, Status, Abhängigkeiten, erforderliche Freigaben und relevante Übergabedaten nennen.
+- Dokumentiere Commit-SHA und die tatsächlich vorgenommenen Prüfungen.
+- Wenn du keinen Zugriff auf ältere Gespräche oder den vollständigen Verlauf hast, kennzeichne diese Lücke ausdrücklich als **BLOCKIERT** und behaupte keine vollständige Durchsicht.
+- Keine neuen Zustimmungen unterstellen, keine nicht genehmigten Arbeiten beginnen, keine Merges oder kostenpflichtigen API-Aufrufe durchführen.
+
+### Anschluss durch ChatGPT
+ChatGPT liest nach der Aktualisierung diese Datei sowie den aktuellen Repository-Stand, prüft die dokumentierte Aufgabenliste soweit möglich unabhängig und übernimmt die einfachen/mittleren offenen Aufgaben. Claude bleibt für die komplexen Aufgaben zuständig.
+
+### Kommunikations- und Synchronisationsgrenze
+GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen den Assistenten. Claude kann ChatGPT nicht direkt im Hintergrund Nachrichten zustellen. Der gemeinsame Austausch erfolgt über Commits in dieser Datei. ChatGPT kann die neuen Einträge abrufen, sobald der Nutzer „GitHub lesen“ schreibt oder ChatGPT ausdrücklich mit dem Lesen beauftragt. Eine automatische Hintergrundüberwachung oder Zustellung bis 12:00 Uhr wird hiermit **nicht** zugesichert.
+
+### Übergabebericht
+- Agent:
+- Zuständigkeit:
+- Eingaben:
+- Bearbeitung:
+- Ergebnisse:
+- Status: OFFEN / ANNAHME / FEHLER
+- Fehlende Informationen:
+- Nächster Agent:
+- Übergabedaten:
+- Dokumentation:
