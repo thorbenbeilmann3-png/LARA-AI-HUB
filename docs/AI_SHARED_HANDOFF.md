@@ -315,3 +315,75 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent:
 - Übergabedaten:
 - Dokumentation:
+
+### 2026-11-07 17:30 UTC (18:30 Europe/Berlin) – Morgenübergabe: Aufgaben und Zustimmungen
+- Agent: Claude (Claude Code, Cloud-Sitzung `session_01EGcp56QJ8adQXhwyVSknZo`)
+- Zuständigkeit: Auftrag „Morgenübergabe“ aus `4a36b73`
+- Eingaben: der vollständige Verlauf **dieser einen** Claude-Sitzung (07.11.2026, seit dem NOXARION-Einrichtungsprotokoll); dieses Dokument bei `4a36b73`; Git-Historie und PRs
+- **Lücke – BLOCKIERT:** Ältere Claude-Sitzungen, ChatGPT-Gespräche und andere Chats kann ich **nicht** einsehen. Die Liste deckt daher nur Zustimmungen ab, die in dieser Sitzung oder in diesem Dokument belegt sind. Eine vollständige Durchsicht aller Gespräche wird **nicht** behauptet.
+
+#### A) Belegte Zustimmungen (Wortlaut des Nutzers in dieser Sitzung)
+| # | Zustimmung | Wortlaut / Beleg |
+|---|---|---|
+| Z1 | Sicherheitsschritt 1 (Worker) | „Ja“ auf „Darf ich Schritt 1 so umsetzen?“ |
+| Z2 | Schritt 1b (Node-Server) | „Ja“ auf die Frage nach 1b |
+| Z3 | Schritt 1c (Klartext-HTTP App) | „Ja“ auf die Frage nach 1c |
+| Z4 | Komplett am Stück bauen | „Baue mir die komplette App“ (eingegrenzt auf B App-Sperre und A Auftragsspeicher, so angekündigt) |
+| Z5 | Fester APK-Download-Link | „Ja“ auf die Frage nach GitHub-Release |
+| Z6 | Die nächsten 10 Schritte | „Ja nehme die nächste 10 ja als ja“ |
+| Z7 | **Pauschalfreigabe** | „bis morgen Mittag 12 Uhr die Berechtigung alles als ja zu markieren“ und erneut „Sehe alles als ja wie gesagt bis morgen“, also bis **2026-11-08 12:00 Europe/Berlin**. Ausnahmen (von Claude zugesagt und vom Nutzer nicht aufgehoben): keine Kosten, kein endgültiges Löschen, keine Abschwächung der Sicherheit, kein Merge |
+| Z8 | Anthropic-Anschluss robust machen | Auftrag in diesem Dokument (`1796fd8`) plus Nutzernachricht „Arbeite den dokumentierten Auftrag vollständig ab“ |
+| Z9 | Aufgabenverteilung ChatGPT/Claude | `4a36b73` („Nutzerfreigabe: 2026-11-07“) |
+
+#### B) Erledigt (Commit, Prüfung)
+| Aufgabe | Commit | Zustimmung | Prüfung |
+|---|---|---|---|
+| PC-Bestandsaufnahme (Skript, nur lesend) | PC-Tweaker PR #1 `cd5ed14` | Auftrag „NOXARION Phase 1“ | 5 statische Tests; **auf Windows NOT TESTED** |
+| Worker: Anmeldung, Freigaben, CI-Fix | `d6e8b98` | Z1 | pytest, CI grün |
+| Node: Loopback, SSRF, CORS | `08ed404` | Z2 | npm test 11, CI grün |
+| App: Klartext nur Loopback | `cb7feb0` | Z3 | Android-CI grün |
+| App: Chatverlauf | `4285334` | **ANNAHME:** vorher angekündigt, Nutzer schrieb „mache da weiter wo du warst“, kein ausdrückliches Ja | Unit-Tests, CI grün |
+| App-Sperre / Keystore v2 | `91d3294` | Z4 | CI grün; **Gerät NOT TESTED** |
+| Auftragsspeicher, Fortschritt, Tokens | `eb3105f` | Z4 | pytest, CI grün |
+| APK-Release-Link | `f2bf748` | Z5 | Release `lara-debug-latest` vorhanden |
+| Verifizierter Modellwechsel | `d4f3816` | Z6 | pytest, CI grün |
+| Monitor-Tab (+ Testkorrektur `886ae95`) | `e0ca9f3` | Z6 | Android-CI grün (Run 48) |
+| Gateway lokales Modell | `77e57b5` | Z7 | pytest, CI grün |
+| `/health` + Rate Limiting | `8aee744` | Z7 | pytest, CI grün |
+| Core-Start Pydroid | `d42e20a` | Z7 | pytest + lokaler Echtstart; **Pydroid NOT TESTED** |
+| Anthropic-Anschluss | `cfda044` | Z8 | 9 Unit-Tests, Android-CI Run 49 success |
+| Befunde: Gemini-Header, Rate-Limit-Schlüssel | `993297e` | Z7 | pytest 89 passed, CI grün |
+| Befund: Schlüssel-Übernahme einzeln | `23a8789` | Z7 | Android-CI Run 50 **läuft**; Gerät NOT TESTED |
+
+#### C) Genehmigt (Z7), aber offen – priorisiert
+| Prio | Aufgabe | Verantwortlich | Komplexität | Abhängigkeiten | Freigabe nötig? |
+|---|---|---|---|---|---|
+| 1 | Gerätetests Pixel (Sperre, Übernahme, Chat, Monitor, LAN-Sperre) | **Nutzer** | – | APK `lara-debug-latest` | nein |
+| 2 | Core in Pydroid starten, Ergebnis oder Fehlertext melden | **Nutzer** | – | `docs/CORE-AUF-DEM-PIXEL.md` | nein |
+| 3 | Gedächtnis-Grundlage (Einträge mit Vertrauensstatus, Export `LARA_MEMORY/*.md`) | **Claude** | komplex (Datenmodell, Core-API) | Auftragsspeicher | durch Z7 bis 12:00 gedeckt |
+| 4 | Bridge und Core zusammenführen (ein Pydroid-Prozess) | **Claude** | komplex | Ergebnis von Prio 2 | durch Z7 gedeckt; **wartet auf Prio 2** |
+| 5 | Freigabe-Oberfläche in der App (Approver-Token, JA/NEIN) | **Claude** | komplex (Sicherheit, Android) | Core läuft auf dem Gerät | durch Z7 gedeckt |
+| 6 | Automate-Anleitung Bridge health/echo mit Timeout/Fehlerweg (keine `.flo`) | **ChatGPT** | einfach | – | durch Z7 gedeckt |
+| 7 | Veraltete Doku korrigieren (`docs/AI_HANDOVER.md` Z. 41/187/188/199, `README.md` „Not implemented yet“) | **ChatGPT** | einfach | – | durch Z7 gedeckt |
+| 8 | Android-Workflow: Veröffentlichung in eigenen Job mit `contents: write` | **ChatGPT** | mittel | – | durch Z7 gedeckt |
+| 9 | Bridge (`feature/automate-python-bridge`, PR #2): Token nicht mehr in der Konsole ausgeben | **ChatGPT** | einfach | betrifft anderen Branch | **Nutzer klären:** auf welchem Branch? |
+| 10 | Node-Server: Token-Anmeldung | **ChatGPT** | mittel (Frontend betroffen) | – | durch Z7 gedeckt |
+
+#### D) Nur besprochen oder beauftragt, Umsetzung nicht freigegeben bzw. gesperrt
+- **Kostenpflichtige API-Zugänge** (Claude/OpenAI/Gemini/Such-API): Sie brauchen eine **ausdrückliche Einzelfreigabe**. Z7 deckt sie nicht ab, das ist die Ausnahme „Kosten“.
+- **PC-Fernzugriff, Windows-Agent, VPN (Tailscale/WireGuard):** gesperrt laut Nutzerregel, bis die Sicherheitslücken auf dem Gerät geprüft und unabhängig bestätigt sind.
+- NOXARION Phasen 2–10 (Aufräumen, Sortieren, PC-Steuerung): Sie hängen am Bericht des PC-Skripts, den der Nutzer noch nicht geliefert hat.
+- ARENA-Logik, Agentensystem, Recherchefilter, Reparaturkreislauf, KI-Postfach mit ChatGPT: in Masteraufträgen beschrieben, Umsetzung nicht begonnen. Reihenfolge laut Plan nach Gedächtnis und Gateway.
+- Netzwerkfreigabe der Hosts `ai.google.dev`, `platform.openai.com`, `openrouter.ai` für die Doku-Prüfung: vorgeschlagen, nicht entschieden.
+
+#### E) Unklar oder widersprüchlich
+- „Jetzt nur noch die Handy ab Lara Croft“ (vermutlich Spracheingabe): als „nur noch die Handy-App LARA“ gedeutet, **nicht bestätigt**.
+- „Automartig für andere Sachen … olarma“: vom Nutzer selbst verworfen („lösche das“), keine Aufgabe.
+- WLAN-Adresse `10.186.32.74:12434`: **geklärt**. Der Server läuft auf dem Pixel, LARA nutzt `127.0.0.1:12434`, die IP wurde nicht in den Code übernommen.
+- Laut Snapshot ganz oben in diesem Dokument war die Android-Debug-APK auf `f2bf748` der letzte grüne Build. Inzwischen sind Run 48 (`09230dd`) und Run 49 (`cfda044`) grün.
+
+- Status: OFFEN (Liste fertig; Prüfung durch ChatGPT OFFEN; CI Run 50 offen)
+- Fehlende Informationen: Verlauf außerhalb dieser Sitzung (BLOCKIERT, s. o.); Branch-Entscheidung für Prio 9
+- Nächster Agent: ChatGPT (Prüfung der Liste, Übernahme Prio 6–10); Claude (Prio 3, ab der Wiedervorlage)
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `4a36b73`, PR #3
+- Dokumentation: dieser Eintrag
