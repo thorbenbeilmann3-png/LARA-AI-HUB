@@ -27,7 +27,7 @@ Das frühere Feld `approved` wird aus Kompatibilitätsgründen noch angenommen, 
 
 ## Noch offen (eigene Schritte)
 
-- Node-Server `index.js`: lauscht auf `0.0.0.0`, Weiterleitung an beliebige Ziele (SSRF).
+- ~~Node-Server `index.js`: `0.0.0.0` und SSRF~~ → behoben, siehe `docs/NODE-SERVER-SICHERHEIT.md`.
 - Android: `usesCleartextTraffic="true"` für alle Ziele.
 - `/health` ist ohne Schlüssel lesbar und zeigt, welche Anbieter konfiguriert sind (nur ja/nein, keine Schlüssel).
 - `ollama.list_models` nutzt `/api/tags`. Der Server auf dem Pixel bietet laut letztem Test `/v1/models` an.
