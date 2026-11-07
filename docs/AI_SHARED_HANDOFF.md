@@ -195,7 +195,7 @@ Der Nutzer möchte künftig keine langen technischen Anweisungen mehr zwischen d
 6. Niemals mergen, Branches löschen, Secrets eintragen oder kostenpflichtige API-Aufrufe aktivieren, ohne ausdrückliche Nutzerfreigabe.
 
 ### Auftrag an Claude – vorhandenen Anthropic-Anschluss robust machen
-- Status: OFFEN
+- Status: UMGESETZT durch Claude (`cfda044`), unabhängige Prüfung durch ChatGPT OFFEN – siehe Eintrag „Anthropic-Anschluss robust gemacht“ unten
 - Zuständigkeit: Claude als Umsetzer; ChatGPT anschließend als unabhängiger Prüfer
 - Ziel: Den bereits vorhandenen Claude-/Anthropic-Anschluss in LARA verbessern. Keine zweite parallele Claude-Client-Klasse und keine neue API-Integration bauen.
 - Ausgangspunkt: Die aktuelle Implementierung in `ApiConnection.kt` und die dazugehörigen Tests vollständig untersuchen. Vorhandene Keystore-Speicherung, App-Sperre, Chatverlauf, Modellabfrage und Token-Monitoring erhalten.
@@ -221,3 +221,27 @@ Jeder neue Eintrag muss alle Felder enthalten:
 - Nächster Agent:
 - Übergabedaten:
 - Dokumentation:
+
+### 2026-11-07 17:35 UTC (18:35 Europe/Berlin) – Anthropic-Anschluss robust gemacht
+- Agent: Claude (Claude Code, Cloud-Sitzung)
+- Zuständigkeit: Umsetzer für den „Auftrag an Claude – vorhandenen Anthropic-Anschluss robust machen“
+- Eingaben: dieses Dokument bei `1796fd8`; `app/src/main/java/de/laraai/hub/ApiConnection.kt`; offizielle Anthropic-Doku zu `stop_reason` (https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons, live abgerufen) und die Claude-API-Referenz der Sitzung
+- Bearbeitung:
+  - **Keine** zweite Client-Klasse und keine neue Integration. Der vorhandene Anthropic-Zweig in `ApiConnection.kt` ruft jetzt `AnthropicResponse.toChatText()` auf (neue Datei `AnthropicResponse.kt`).
+  - Aufgabe 1 (`stop_reason`): Verifiziert sind die Werte `end_turn`, `max_tokens`, `stop_sequence`, `tool_use`, `pause_turn`, `refusal`, `model_context_window_exceeded`, und dass `stop_details` nur bei `refusal` gefüllt ist. Umsetzung: `refusal` wird zu einem eigenen Fehler („Claude hat die Anfrage abgelehnt (Kategorie: …): …“). `max_tokens`, `model_context_window_exceeded`, `pause_turn` und `tool_use` behalten den Text und bekommen einen mit „⚠“ markierten Hinweis. Damit sind beide Fälle in der Oberfläche unterscheidbar.
+  - Aufgabe 2 (Content-Blöcke): Gesammelt werden nur Blöcke mit `type == "text"`, auch mehrere. `thinking`, `redacted_thinking` und unbekannte Blöcke werden übersprungen, auch wenn sie ein `text`-Feld haben.
+  - Aufgabe 4: Zeitlimits (10 s Verbindung / 120 s Lesen), Modellliste, Chatverlauf, Token-Monitor, Keystore und App-Sperre bleiben unverändert. Keine Schlüssel in Code, BuildConfig, Logs oder Repository.
+- Ergebnisse / Tests:
+  - `AnthropicResponseTest` (9 Tests: normale Antwort, mehrere Textblöcke, Thinking/Redacted/unbekannter Block vor Text, Ablehnung mit Details, Ablehnung ohne Details, abgeschnitten, Kontextfenster voll, abgeschnitten ohne Text, leer). **Lokal** im JVM-Hilfsprojekt (Gradle 8.14, org.json 20240303): **9 passed**. Zusammen mit ChatHistory (9), CleartextPolicy (3) und SessionLock (6) sind es lokal **27 passed, 0 failed**.
+  - **GitHub Actions** „Android debug APK“, Run `42395878371` (Nr. 49) auf `cfda044`: **success**. Er enthält `:app:testDebugUnitTest` (alle App-Unit-Tests einschließlich `TokenUsageTest`) und `:app:assembleDebug`. Die genaue Testanzahl in CI ist im Log nicht ausgewiesen, dort ist nur der Schritt als erfolgreich gemeldet.
+  - Kosten: **0 €**. Es gab keinen echten Anthropic-Aufruf, an Schlüsseln wurde nichts geändert.
+  - **NOT TESTED:** echte Claude-Antwort auf dem Gerät (dafür bräuchte es einen kostenpflichtigen API-Schlüssel).
+- Zusätzlich behoben (aus dem Befund-Eintrag oben, eigene Commits):
+  - `993297e` Core: Gemini-Schlüssel per Header statt URL. Gültige Tokens sind von der Rate-Limit-Sperre ausgenommen und haben einen eigenen Zähler. Tests: `pytest -q` **89 passed**.
+  - `23a8789` App: Übernahme der v1-Schlüssel erfolgt einzeln statt „alles oder nichts“. Unit-Tests dafür sind nicht möglich (Android Keystore). Der Android-CI-Build dafür ist gestartet, **Ergebnis noch offen**. Gerätetest **NOT TESTED**.
+- Status: OFFEN (wartet auf unabhängige Prüfung durch ChatGPT; CI für `23a8789` offen)
+- Fehlende Informationen: keine für diese Aufgabe
+- Nächster Agent: ChatGPT (Prüfung von `cfda044`, `993297e`, `23a8789`)
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, PR #3 (Draft, nicht gemergt)
+- Dokumentation: `docs/PYTHON-WORKER-SICHERHEIT.md` (Nachbesserung), `docs/APP-SPERRE.md` (Übernahme)
+
