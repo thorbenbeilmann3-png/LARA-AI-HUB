@@ -36,13 +36,13 @@ class RateLimiter:
         while q and now - q[0] >= window:
             q.popleft()
 
-    def check(self, client: str, now: float | None = None) -> float | None:
+    def check(self, client: str, now: float | None = None, enforce_auth_lockout: bool = True) -> float | None:
         """Register a request; return seconds to wait if it must be rejected, else None."""
         now = time.monotonic() if now is None else now
         with self._lock:
             fails = self._fails[client]
             self._trim(fails, now, AUTH_WINDOW_S)
-            if len(fails) >= self._limit("LARA_AUTH_FAIL_LIMIT", 10):
+            if enforce_auth_lockout and len(fails) >= self._limit("LARA_AUTH_FAIL_LIMIT", 10):
                 return max(1.0, AUTH_WINDOW_S - (now - fails[0]))
             hits = self._hits[client]
             self._trim(hits, now, WINDOW_S)

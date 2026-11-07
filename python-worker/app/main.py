@@ -156,10 +156,26 @@ class ApprovalStore:
 approvals = ApprovalStore()
 
 
+def _presents_valid_token(request: Request) -> bool:
+    supplied = request.headers.get("authorization", "")
+    supplied = supplied.removeprefix("Bearer ").strip().encode()
+    if not supplied:
+        return False
+    for name in ("LARA_AUTOMATION_TOKEN", "LARA_APPROVER_TOKEN"):
+        expected = os.getenv(name)
+        if expected and hmac.compare_digest(supplied, expected.encode()):
+            return True
+    return False
+
+
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
-    client = request.client.host if request.client else "unknown"
-    wait = limiter.check(client)
+    # On the phone every local app is 127.0.0.1. Requests with a valid token get
+    # their own bucket and are never hit by the wrong-token lockout, so another app
+    # cannot lock LARA out by sending bad tokens or flooding without one.
+    host = request.client.host if request.client else "unknown"
+    client = f"{host}|{'auth' if _presents_valid_token(request) else 'anon'}"
+    wait = limiter.check(client, enforce_auth_lockout=not client.endswith("|auth"))
     if wait is not None:
         return JSONResponse({"detail": "Zu viele Anfragen"}, status_code=429,
                             headers={"Retry-After": str(int(wait) + 1)})
@@ -216,7 +232,7 @@ async def chat(request: ChatRequest, authorization: str | None = Header(default=
             try:
                 response = await client.post(
                     url,
-                    params={"key": key},
+                    headers={"x-goog-api-key": key},  # never in the URL (logs)
                     json={"contents": [{"parts": [{"text": request.prompt}]}]},
                 )
                 response.raise_for_status()

@@ -33,3 +33,9 @@ Das frühere Feld `approved` wird aus Kompatibilitätsgründen noch angenommen, 
 - `ollama.list_models` nutzt `/api/tags`. Der Server auf dem Pixel bietet laut letztem Test `/v1/models` an.
 - ~~Keine Begrenzung der Anfragerate~~ → behoben (0.4.0): höchstens `LARA_RATE_LIMIT_PER_MIN` (Standard 120) Anfragen pro Minute und Client. Nach `LARA_AUTH_FAIL_LIMIT` (Standard 10) falschen Tokens in 5 Minuten wird der Client für den Rest des Zeitfensters gesperrt (HTTP 429 mit `Retry-After`). Der Zustand liegt nur im Arbeitsspeicher und gilt für einen einzelnen Prozess.
 - Der Worker hat keine Startanleitung. Er soll nur auf `127.0.0.1` oder der VPN-Adresse lauschen (uvicorn-Standard: `127.0.0.1`).
+
+## Nachbesserung (Befunde vom 2026-11-07)
+
+- Der Gemini-Schlüssel wird im Header `x-goog-api-key` gesendet, nicht mehr als `?key=` in der URL. Das gleicht die App an. Der Header-Name ist nach meinem Kenntnisstand korrekt, die Google-Doku war in dieser Umgebung gesperrt und ist **nicht geprüft**.
+- Rate Limiting: Anfragen mit gültigem Token haben einen eigenen Zähler und sind von der Sperre nach falschen Tokens ausgenommen. Eine andere App auf dem Handy, die ebenfalls `127.0.0.1` ist, kann LARA weder mit falschen Tokens noch mit vielen Anfragen ohne Token aussperren. Falsche Tokens werden weiterhin nach `LARA_AUTH_FAIL_LIMIT` Versuchen gesperrt.
+
