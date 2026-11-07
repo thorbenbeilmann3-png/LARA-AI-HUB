@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -46,9 +45,9 @@ internal fun MonitorPage(context: Context, auth: AuthRequester, usage: List<Toke
     var coreStatus by remember { mutableStateOf("Noch nicht abgefragt.") }
     var jobs by remember { mutableStateOf(emptyList<CoreClient.JobSummary>()) }
 
-    Text("KI- und Auftragsmonitor", style = MaterialTheme.typography.titleLarge)
+    Text("KI- und Auftragsmonitor", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
 
-    Card {
+    GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Letzte Anfrage", style = MaterialTheme.typography.titleMedium)
             if (last == null) {
@@ -64,7 +63,7 @@ internal fun MonitorPage(context: Context, auth: AuthRequester, usage: List<Toke
         }
     }
 
-    Card {
+    GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Kontext · $modelForGauge", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
@@ -94,7 +93,7 @@ internal fun MonitorPage(context: Context, auth: AuthRequester, usage: List<Toke
         }
     }
 
-    Card {
+    GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Aufträge (LARA Core)", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(value = coreUrl, onValueChange = { coreUrl = it.trim() }, label = { Text("Core-Adresse") },

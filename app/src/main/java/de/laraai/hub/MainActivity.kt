@@ -469,7 +469,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
 
                     0 -> {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("KI-Chat", style = MaterialTheme.typography.titleLarge)
+                            Text("KI-Chat", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                             TextButton(onClick = { checkConnection() }, enabled = !checking && !busy) {
                                 Text(if (checking) "Prüfe …" else "Verbindung testen")
                             }
@@ -480,8 +480,13 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(lines.takeLast(80)) { entry ->
-                                Card {
-                                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                val mine = entry.role == "Du"
+                                GlassCard(
+                                    Modifier.fillMaxWidth().padding(start = if (mine) 32.dp else 0.dp, end = if (mine) 0.dp else 32.dp),
+                                    accent = if (mine) LaraColors.Gold else LaraColors.Cyan,
+                                    corner = 16.dp
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("${entry.role} · ${entry.time}", style = MaterialTheme.typography.labelSmall)
                                             TextButton(onClick = { copyText(context, entry.text) }) { Text("Kopieren") }
@@ -553,7 +558,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
 
                     1 -> {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("KI-Postfach", style = MaterialTheme.typography.titleLarge)
+                            Text("KI-Postfach", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                             TextButton(onClick = { lines.clear(); saveMessages(context, lines) }) { Text("Leeren") }
                         }
                         Text("Ein- und Ausgang · lokal auf diesem Handy gespeichert")
@@ -562,7 +567,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                         } else {
                             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(lines.asReversed()) { entry ->
-                                    Card {
+                                    GlassCard(Modifier.fillMaxWidth()) {
                                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text(entry.role, style = MaterialTheme.typography.labelLarge)
@@ -579,9 +584,9 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                     }
 
                     2 -> {
-                        Text("ARENA", style = MaterialTheme.typography.titleLarge)
+                        Text("ARENA", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                         Text("KI-Wettkampf · bis zu 30 Teilnehmerplätze")
-                        Card {
+                        GlassCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("Wettkampfablauf", style = MaterialTheme.typography.titleMedium)
                                 Text("1. Aufgabe festlegen")
@@ -597,7 +602,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                     4 -> MonitorPage(context, auth, usageEntries, model)
 
                     3 -> {
-                        Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge)
+                        Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                         Text("KI-Anbieter auswählen", style = MaterialTheme.typography.titleMedium)
                         Box {
                             OutlinedButton(
@@ -673,7 +678,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                             }
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
-                        Divider()
+                        HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
                         if (selectedProvider.requiresApiKey || selectedProvider == AiProvider.CUSTOM) {
                             Text(
                                 if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token · OpenClaw"
@@ -755,7 +760,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
-                        Divider()
+                        HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
                         Text("Automate von LlamaLab", style = MaterialTheme.typography.titleMedium)
                         OutlinedTextField(
                             value = automateFlowUri,
