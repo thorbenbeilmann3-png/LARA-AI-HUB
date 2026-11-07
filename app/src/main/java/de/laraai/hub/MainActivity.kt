@@ -22,6 +22,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -100,7 +107,7 @@ class MainActivity : FragmentActivity() {
         )
         authAvailable = BiometricManager.from(this).canAuthenticate(authenticators) ==
             BiometricManager.BIOMETRIC_SUCCESS
-        setContent {
+        setContent { LaraTheme {
             if (locked) {
                 LockScreen(
                     message = lockMessage,
@@ -114,7 +121,7 @@ class MainActivity : FragmentActivity() {
             } else {
                 LaraHubApp(requester, startupNotice = lockMessage)
             }
-        }
+        } }
     }
 
     private fun unlockSession() {
@@ -324,7 +331,8 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
     var busy by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf(startupNotice ?: "Noch nicht verbunden – Verbindung zuerst testen.") }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    // Content indices: 9 Home, 0 Chat, 2 Arena, 4 Monitor/Aufträge, 1 Postfach, 3 Tools.
+    var selectedTab by remember { mutableIntStateOf(9) }
     var usageEntries by remember { mutableStateOf(UsageLog.load(context)) }
     var apiMode by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
     var availableModels by remember { mutableStateOf(emptyList<String>()) }
@@ -392,26 +400,44 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
         }
     }
 
-    MaterialTheme {
+    run {
         Scaffold(
+            containerColor = Color.Transparent,
             topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text("LARA AI HUB")
-                            Text("Lokale und externe KI-Zentrale", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                )
+                if (selectedTab != 9) {
+                    TopAppBar(
+                        title = {
+                            Column {
+                                Text("LARA AI HUB", color = LaraColors.Gold)
+                                Text("Lokale und externe KI-Zentrale", style = MaterialTheme.typography.labelSmall, color = LaraColors.TextMuted)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                    )
+                }
             },
             bottomBar = {
-                NavigationBar {
-                    listOf("Chat", "Postfach", "ARENA", "PC", "Monitor").forEachIndexed { index, label ->
+                NavigationBar(containerColor = Color(0xF20B1330)) {
+                    // label, icon, content index, which content indices count as "selected"
+                    listOf(
+                        Triple("Home", Icons.Outlined.Home, listOf(9)),
+                        Triple("Chat", Icons.Outlined.ChatBubbleOutline, listOf(0)),
+                        Triple("Arena", Icons.Outlined.EmojiEvents, listOf(2)),
+                        Triple("Projekte", Icons.Outlined.Folder, listOf(4, 1)),
+                        Triple("Tools", Icons.Outlined.Build, listOf(3))
+                    ).forEach { (label, icon, targets) ->
                         NavigationBarItem(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            icon = { Text(listOf("✦", "✉", "⚔", "⌘", "◉")[index]) },
-                            label = { Text(label) }
+                            selected = selectedTab in targets,
+                            onClick = { selectedTab = targets.first() },
+                            icon = { Icon(icon, contentDescription = label) },
+                            label = { Text(label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = LaraColors.Gold,
+                                selectedTextColor = LaraColors.Gold,
+                                indicatorColor = LaraColors.Gold.copy(alpha = 0.15f),
+                                unselectedIconColor = LaraColors.Cyan,
+                                unselectedTextColor = LaraColors.TextMuted
+                            )
                         )
                     }
                 }
@@ -422,7 +448,25 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                 Modifier.fillMaxSize().padding(padding).padding(16.dp).then(pageModifier),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (selectedTab == 4 || selectedTab == 1) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = selectedTab == 4, onClick = { selectedTab = 4 }, label = { Text("Aufträge & Monitor") })
+                        FilterChip(selected = selectedTab == 1, onClick = { selectedTab = 1 }, label = { Text("Postfach") })
+                    }
+                }
                 when (selectedTab) {
+                    9 -> HomePage(
+                        context = context,
+                        providerLabel = selectedProvider.label,
+                        model = model,
+                        connectionStatus = status,
+                        chat = lines.map { HomeChatLine(it.role, it.text, it.time) },
+                        usage = usageEntries,
+                        onOpenTab = { target -> selectedTab = target },
+                        onQuickPrompt = { text -> prompt = text; selectedTab = 0 },
+                        onTestConnection = { selectedTab = 0; checkConnection() }
+                    )
+
                     0 -> {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("KI-Chat", style = MaterialTheme.typography.titleLarge)

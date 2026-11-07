@@ -38,6 +38,16 @@ internal object CoreClient {
         }
     }
 
+    /** Unauthenticated liveness check of the Core (GET /health). Never throws. */
+    suspend fun isAlive(baseUrl: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val root = baseUrl.trim().trimEnd('/')
+            if (!CleartextPolicy.isAllowed(root)) return@runCatching false
+            val request = Request.Builder().url("$root/health").get().build()
+            client.newCall(request).execute().use { it.code == 200 }
+        }.getOrDefault(false)
+    }
+
     internal fun parseJobs(json: JSONObject): List<JobSummary> {
         val jobs = json.optJSONArray("jobs") ?: return emptyList()
         return (0 until jobs.length()).map { i ->
