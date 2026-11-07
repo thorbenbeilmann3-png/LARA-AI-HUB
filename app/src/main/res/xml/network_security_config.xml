@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  LARA: Unverschlüsseltes HTTP ist nur für Dienste auf diesem Gerät erlaubt
+  (lokaler Modellserver 127.0.0.1:12434, Python-Bridge 127.0.0.1:8765).
+  Alles andere muss HTTPS verwenden. Siehe docs/ANDROID-NETZWERK-SICHERHEIT.md.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

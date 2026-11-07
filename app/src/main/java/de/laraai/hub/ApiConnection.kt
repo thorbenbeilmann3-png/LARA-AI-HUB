@@ -18,7 +18,7 @@ internal enum class AiProvider(
     val defaultEndpoint: String,
     val requiresApiKey: Boolean
 ) {
-    OLLAMA("ollama", "Ollama · lokal", "http://10.179.130.230:12434/", false),
+    OLLAMA("ollama", "Ollama · lokal", "http://127.0.0.1:12434/", false),
     OPENAI("openai", "OpenAI", "https://api.openai.com/v1", true),
     ANTHROPIC("anthropic", "Anthropic · Claude", "https://api.anthropic.com", true),
     GEMINI("gemini", "Google · Gemini", "https://generativelanguage.googleapis.com/v1beta", true),
@@ -385,11 +385,30 @@ internal object ApiConnection {
         return host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")
     }
 
+    /**
+     * Mirrors res/xml/network_security_config.xml: plain HTTP is only allowed to this
+     * device (loopback). Gives a clear message instead of OkHttp's generic
+     * "CLEARTEXT communication ... not permitted" error.
+     */
+    internal fun isCleartextAllowed(url: String): Boolean {
+        if (!url.trim().startsWith("http://", ignoreCase = true)) return true
+        val host = runCatching { java.net.URI(url.trim()).host?.lowercase() }.getOrNull() ?: return false
+        return host == "127.0.0.1" || host == "localhost"
+    }
+
+    private fun requireCleartextAllowed(url: String) {
+        require(isCleartextAllowed(url)) {
+            "Unverschlüsseltes HTTP ist nur für Dienste auf diesem Handy erlaubt " +
+                "(z. B. http://127.0.0.1:12434). Für andere Geräte bitte HTTPS verwenden."
+        }
+    }
+
     private fun rootUrl(endpoint: String, provider: AiProvider): String {
         val value = endpoint.trim().trimEnd('/')
         require(value.startsWith("http://", true) || value.startsWith("https://", true)) {
             "Bitte eine gültige HTTP- oder HTTPS-Adresse eingeben."
         }
+        requireCleartextAllowed(value)
         val suffixes = listOf(
             "/v1/chat/completions",
             "/v1beta/models",

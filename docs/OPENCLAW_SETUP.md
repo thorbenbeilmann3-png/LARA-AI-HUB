@@ -25,7 +25,7 @@ Apply the configuration using your normal OpenClaw configuration/restart procedu
 1. Open **Verbindungen & Geräte**.
 2. Select **OpenClaw · Gateway**.
 3. Enter the Gateway base URL, including `/v1`:
-   - Private LAN example: `http://192.168.1.20:18789/v1`
+   - Private LAN: only via HTTPS (e.g. `https://gateway.local:18789/v1` with a trusted certificate). Plain HTTP to LAN addresses is blocked by the app's network security config, see `docs/ANDROID-NETZWERK-SICHERHEIT.md`.
    - Private HTTPS/Tailscale ingress: `https://your-private-gateway.example/v1`
 4. Enter the Gateway token and save it in LARA.
 5. Select **Verbinden / Modelle laden**.
@@ -48,7 +48,7 @@ Treat the Gateway token as a highly privileged owner/operator credential. With t
 
 - Keep the HTTP endpoint on loopback, a private LAN, a tailnet or another private ingress.
 - Never expose this endpoint directly to the public internet.
-- Use HTTPS for remote connections. LARA permits plain HTTP only for localhost/private-network gateway addresses.
+- Use HTTPS for every connection that leaves the phone. LARA permits plain HTTP only to loopback (`127.0.0.1`, `localhost`).
 - Do not reuse the Gateway token as an OpenAI, Anthropic, Gemini or other provider API key.
 
 OpenClaw's documentation recommends the Gateway WebSocket protocol with paired-device bootstrap/device tokens for native mobile clients connecting remotely. LARA's current integration uses the official HTTP compatibility endpoint; a paired-device WebSocket transport is a separate future hardening step.

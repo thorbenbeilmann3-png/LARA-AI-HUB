@@ -46,7 +46,7 @@ private data class LaraConfig(
 
 private fun loadConfig(context: Context): LaraConfig {
     val prefs = context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE)
-    val defaultEndpoint = "http://10.179.130.230:12434/"
+    val defaultEndpoint = "http://127.0.0.1:12434/"
     val endpoint = prefs.getString("endpoint", defaultEndpoint) ?: defaultEndpoint
     val inferredProvider = if (
         endpoint.startsWith("https://", ignoreCase = true) && ApiKeyStore.hasSaved(context)
