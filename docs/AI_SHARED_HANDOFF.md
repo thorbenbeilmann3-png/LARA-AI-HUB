@@ -175,3 +175,49 @@ Die vier bekannten Sicherheitslücken aus diesem Dokument sind im Code geschloss
 - Fehlende Informationen / BLOCKIERT: Gerätetest-Ergebnisse; Pydroid-Installierbarkeit von `pydantic`
 - Nächster Agent: ChatGPT (Prüfung), danach Claude (Befunde beheben)
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `d42e20a`, PR #3
+
+
+## Einfache Nutzerbefehle für ChatGPT und Claude (ab 2026-11-07)
+
+Der Nutzer möchte künftig keine langen technischen Anweisungen mehr zwischen den Assistenten kopieren müssen. Er soll in ChatGPT kurz schreiben können:
+
+- **„GitHub lesen“**: ChatGPT liest zuerst diese Datei und prüft danach den aktuellen Repository-Stand, Branches, offene PRs/Commits und relevante Actions. Anschließend berichtet ChatGPT knapp, was neu ist, was offen ist und ob etwas blockiert.
+- **„GitHub eintragen: [Information/Aufgabe/Ergebnis]“**: ChatGPT ergänzt diese Übergabedatei um genau diese Information bzw. das Ergebnis. Vorher aktuellen Dateiinhalt und Branch-Stand abrufen; keine fremden Änderungen überschreiben. Danach committen und den Link zum geänderten Dokument nennen.
+- **„Claude soll …“**: ChatGPT formuliert bzw. dokumentiert die Aufgabe für Claude in dieser Datei unter „Auftrag an Claude“. Claude muss vor der Umsetzung die neueste Version dieser Datei lesen. ChatGPT behauptet nicht, Claude direkt gestartet oder benachrichtigt zu haben.
+- **„Prüfe GitHub“**: ChatGPT führt eine unabhängige Prüfung des dokumentierten Claude-Ergebnisses anhand der tatsächlichen Commits, geänderten Dateien und Testläufe durch. Nicht ausgeführte Prüfungen bleiben ausdrücklich OFFEN.
+
+### Verbindlicher Ablauf bei jeder Übergabe
+1. Immer den aktuellen Stand dieses Dokuments und den aktuellen Branch-Head lesen; den Snapshot oben niemals ungeprüft als aktuellen Stand behandeln.
+2. Änderungen nur auf dem passenden Arbeitsbranch vornehmen. Bei konkurrierenden Änderungen oder unklarem Branch stoppen und BLOCKIERT melden.
+3. Jede Aufgabe mit konkreten Eingaben, Dateien, Commit-SHA, Testergebnissen und offenen Punkten dokumentieren.
+4. Claude liest die Datei vor Arbeitsbeginn und aktualisiert sie nach Abschluss mit Commit-SHA und tatsächlich ausgeführten Tests.
+5. ChatGPT liest danach die aktualisierte Datei und prüft die Aussagen unabhängig. Erst danach gilt die Übergabe als geprüft.
+6. Niemals mergen, Branches löschen, Secrets eintragen oder kostenpflichtige API-Aufrufe aktivieren, ohne ausdrückliche Nutzerfreigabe.
+
+### Auftrag an Claude – vorhandenen Anthropic-Anschluss robust machen
+- Status: OFFEN
+- Zuständigkeit: Claude als Umsetzer; ChatGPT anschließend als unabhängiger Prüfer
+- Ziel: Den bereits vorhandenen Claude-/Anthropic-Anschluss in LARA verbessern. Keine zweite parallele Claude-Client-Klasse und keine neue API-Integration bauen.
+- Ausgangspunkt: Die aktuelle Implementierung in `ApiConnection.kt` und die dazugehörigen Tests vollständig untersuchen. Vorhandene Keystore-Speicherung, App-Sperre, Chatverlauf, Modellabfrage und Token-Monitoring erhalten.
+- Aufgabe 1: Prüfen, wie Anthropic-Antworten mit `stop_reason` behandelt werden. Ablehnungen (`refusal`) und abgeschnittene Antworten (z. B. `max_tokens`) sauber erkennen und in verständliche, unterscheidbare UI-/Fehlermeldungen übersetzen. Tatsächliche Anthropic-Semantik anhand offizieller Dokumentation verifizieren; keine Modellnamen oder API-Fähigkeiten erfinden.
+- Aufgabe 2: Robuste Verarbeitung der Content-Blöcke sicherstellen. Nicht blind nur den ersten Block oder ein nicht vorhandenes `text`-Feld lesen. Mehrere Textblöcke korrekt sammeln und Nicht-Text-Blöcke/Thinking-Blöcke sicher behandeln.
+- Aufgabe 3: Unit-Tests für normale Antwort, mehrere Textblöcke, Thinking-/Nicht-Text-Block vor Text, Ablehnung und abgeschnittene Antwort ergänzen. Tests müssen ohne kostenpflichtigen API-Aufruf laufen.
+- Aufgabe 4: Vorhandene Timeout-, Modelllisten-, Verlauf- und Token-Monitor-Funktion nicht verschlechtern. Keine API-Schlüssel in Code, BuildConfig, Logs oder Repository.
+- Aufgabe 5: Relevante Tests ausführen, Ergebnisse mit exakten Befehlen und Zahlen dokumentieren und einen APK-Build nur dann als erfolgreich bezeichnen, wenn GitHub Actions ihn tatsächlich als success meldet.
+- Kostenregel: Keine echten Anthropic-API-Aufrufe und keine Einrichtung/Änderung von API-Schlüsseln. Diese Aufgabe soll durch Codeänderungen und Unit-Tests zunächst 0 € API-Kosten verursachen.
+- Sicherheitsregel: Kein Merge und keine Änderung an kostenpflichtigen Provider-Einstellungen ohne ausdrückliche Freigabe.
+- Abnahme: Änderungen sind auf einem Arbeitsbranch committed; Tests decken alle oben genannten Fälle ab; unabhängige Prüfung durch ChatGPT steht als eigener Status im Protokoll.
+- Fehlende Informationen / BLOCKIERT: Falls die tatsächliche Implementierung oder offizielle API-Semantik nicht verifiziert werden kann, vor Codeänderung stoppen und den konkreten Grund dokumentieren.
+
+### Übergabeprotokoll – Kurzformat
+Jeder neue Eintrag muss alle Felder enthalten:
+- Agent:
+- Zuständigkeit:
+- Eingaben:
+- Bearbeitung:
+- Ergebnisse:
+- Status: OFFEN / ANNAHME / FEHLER
+- Fehlende Informationen:
+- Nächster Agent:
+- Übergabedaten:
+- Dokumentation:
