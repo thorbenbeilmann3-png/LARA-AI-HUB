@@ -21,10 +21,13 @@ import time
 from typing import Any, Literal
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-app = FastAPI(title="LARA Control Plane", version="0.3.0")
+from .ratelimit import limiter  # noqa: E402
+
+app = FastAPI(title="LARA Control Plane", version="0.4.0")
 
 APPROVAL_TTL_SECONDS = 300
 MAX_PENDING_APPROVALS = 50
@@ -153,17 +156,23 @@ class ApprovalStore:
 approvals = ApprovalStore()
 
 
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    client = request.client.host if request.client else "unknown"
+    wait = limiter.check(client)
+    if wait is not None:
+        return JSONResponse({"detail": "Zu viele Anfragen"}, status_code=429,
+                            headers={"Retry-After": str(int(wait) + 1)})
+    response = await call_next(request)
+    if response.status_code == 401:
+        limiter.auth_failed(client)
+    return response
+
+
 @app.get("/health")
 async def health() -> dict[str, Any]:
-    return {
-        "status": "ok",
-        "python_version": platform.python_version(),
-        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
-        "ollama_configured": bool(os.getenv("OLLAMA_BASE_URL")),
-        "automation": "registered tasks only; bearer token required",
-        "approvals": "server-side; separate approver token required",
-    }
+    # Unauthenticated liveness check only: no versions, no configured providers.
+    return {"status": "ok", "service": "lara-core", "api_version": app.version}
 
 
 @app.post("/v1/chat")

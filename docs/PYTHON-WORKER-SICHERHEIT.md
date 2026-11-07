@@ -29,7 +29,7 @@ Das frühere Feld `approved` wird aus Kompatibilitätsgründen noch angenommen, 
 
 - ~~Node-Server `index.js`: `0.0.0.0` und SSRF~~ → behoben, siehe `docs/NODE-SERVER-SICHERHEIT.md`.
 - Android: `usesCleartextTraffic="true"` für alle Ziele.
-- `/health` ist ohne Schlüssel lesbar und zeigt, welche Anbieter konfiguriert sind (nur ja/nein, keine Schlüssel).
+- ~~`/health` zeigt konfigurierte Anbieter~~ → behoben (0.4.0): `/health` liefert nur noch `status`, `service`, `api_version`.
 - `ollama.list_models` nutzt `/api/tags`. Der Server auf dem Pixel bietet laut letztem Test `/v1/models` an.
-- Keine Begrenzung der Anfragerate (Rate Limiting).
+- ~~Keine Begrenzung der Anfragerate~~ → behoben (0.4.0): höchstens `LARA_RATE_LIMIT_PER_MIN` (Standard 120) Anfragen pro Minute und Client. Nach `LARA_AUTH_FAIL_LIMIT` (Standard 10) falschen Tokens in 5 Minuten wird der Client für den Rest des Zeitfensters gesperrt (HTTP 429 mit `Retry-After`). Der Zustand liegt nur im Arbeitsspeicher und gilt für einen einzelnen Prozess.
 - Der Worker hat keine Startanleitung. Er soll nur auf `127.0.0.1` oder der VPN-Adresse lauschen (uvicorn-Standard: `127.0.0.1`).
