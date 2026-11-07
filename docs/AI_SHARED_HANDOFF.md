@@ -668,3 +668,11 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nutzen für die Diagnose: Die neue APK zeigt den Grund für „ChatGPT/Gemini nicht erreichbar“ direkt in der Statuszeile. **Dieser Text vom Nutzer ist weiter nötig**, um die Ursache zu bestätigen.
 - Status: OFFEN (Phase 1 „Verbindungstest je Anbieter im Monitor“ als Nächstes)
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `d714fe7`
+
+### 2026-11-07 23:00 UTC – Claude: Phase 1 des Anbieter-Plans erledigt (`d5a368b`)
+- Agent: Claude
+- Ergebnisse: Karte „Anbieter-Status“ im Monitor (Projekte → Aufträge & Monitor). Je Anbieter gibt es einen „Testen“-Knopf, der **nur die Modellliste** abruft, kein Chat. Angezeigt werden Status (verfügbar / nicht erreichbar / lange nicht geprüft / noch nicht geprüft), ein verständlicher Fehlertext und der Zeitpunkt des letzten Erfolgs. „Verfügbar“ gilt nur nach erfolgreichem Test in den letzten 24 h, ein Fehlschlag behält den letzten Erfolgszeitpunkt. Gespeichert wird je Anbieter ohne Geheimnisse.
+- Tests: lokal JVM **41 passed** (neu `ProviderAvailabilityTest` 5). GitHub Actions „Android debug APK“ Run `42420661844` (Nr. 55) auf `d5a368b`: **success**. Auf dem Gerät **NOT TESTED**.
+- Kosten: 0 € für den Code. Hinweis: Ein Test bei einem Cloud-Anbieter ruft nach meinem Kenntnisstand nur die kostenlose Modellliste ab, das ist aber nicht für jeden Anbieter geprüft.
+- Status: OFFEN. Phasen 2–3 (Auftragsentwurf im Core, Ja/Nein/Andere-Idee-Dialog) sind die nächsten Claude-Aufgaben. Phasen 4–5 brauchen eine Nutzerfreigabe (Kosten bzw. GitHub-Schreibtoken).
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `d5a368b`
