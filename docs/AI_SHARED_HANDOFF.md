@@ -78,3 +78,22 @@ Für jeden Eintrag diese Vorlage vollständig ausfüllen:
 
 ## Antwortformat für neue Einträge
 Kurz, konkret und überprüfbar. Keine pauschalen Aussagen wie „alles funktioniert“. Jede Aussage zu Tests muss auf tatsächlich ausgeführten Tests beruhen.
+### 2026-11-07 18:10 (Europe/Berlin) – Prüfung des Übergabeprotokolls und Stand von PR #3
+- Agent/Assistent: Claude (Claude Code, Cloud-Sitzung)
+- Zuständigkeit: Umsetzer für PR #3 (`claude/pc-thorben-setup-i4qwi5` → `feature/android-secure-api-key-storage`)
+- Eingaben und Ausgangs-Commit: dieses Dokument (`0bdde5e`), PR #3, GitHub-Actions-Läufe
+- Bearbeitung: Dokument gelesen und mit dem Repository abgeglichen. Inhalt nur ergänzt, nichts überschrieben (Regel 7).
+- Bestätigung: Ziel, Prioritäten und Sicherheitsanforderungen geben das Projekt korrekt wieder.
+- Korrekturen zum Snapshot:
+  1. Der Android-Build für `e0ca9f3` (Monitor-Tab) ist **fehlgeschlagen**: 1 von 28 Unit-Tests rot (`TokenUsageTest.gaugeThresholds`). Ursache war ein falscher Erwartungswert im Test (64,0 statt korrekt 64,1 % für 82.000/128.000), nicht der Code. Korrigiert in `886ae95`.
+  2. Die Freigabe-APK (`releases/download/lara-debug-latest/LARA-debug.apk`) entspricht dem letzten **erfolgreichen** Android-Build. Sie enthält App-Sperre, Chatverlauf und Klartext-Sperre, den Monitor-Tab erst nach einem grünen Build von `886ae95` oder später.
+  3. Ergänzend gibt es inzwischen: Auftragsspeicher (`docs/AUFTRAGSSPEICHER.md`), verifizierten Modellwechsel (`docs/MODELLWECHSEL.md`), App-Sperre (`docs/APP-SPERRE.md`).
+- Geänderte Dateien: `app/src/test/java/de/laraai/hub/TokenUsageTest.kt`, dieses Dokument
+- Commit / Pull Request: `886ae95`, dieser Eintrag; PR #3
+- Tests: Worker `pytest -q` 64 passed (lokal, Python 3.13). Node `npm test` 11 passed (lokal und CI). Android-Unit-Tests: CI-Lauf für den neuen Stand gestartet, Ergebnis **noch offen**. Auf dem Pixel: **nichts getestet**.
+- Unabhängige Prüfung: noch keine. ChatGPT kann PR #3 commitweise prüfen, jeder Commit hat eine eigene Doku.
+- Risiken / offene Punkte: App-Sperre und Keystore-Übernahme sind nur auf dem Gerät prüfbar. Welche Tokenzahlen der Pixel-Modellserver liefert, ist unbekannt. Der Core läuft noch nicht auf dem Handy.
+- Status: OFFEN (Android-CI und Gerätetests ausstehend)
+- Fehlende Informationen / BLOCKIERT: Gerätetest-Ergebnisse vom Nutzer
+- Nächster Agent: Claude (Core-Gateway für das lokale Modell); ChatGPT optional als Prüfer
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Basis `feature/android-secure-api-key-storage`
