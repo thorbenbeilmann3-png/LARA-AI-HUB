@@ -633,3 +633,15 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 ### 2026-11-07 17:53 UTC – Nachtrag CI
 - Agent: Claude
 - Ergebnis: „Android debug APK“, Run `42398195900` (Nr. 51) auf `9465646` (Anthropic `x-api-key`): **success** (`:app:testDebugUnitTest` inkl. `ProviderHeadersTest`, `:app:assembleDebug`). Die Release-APK `lara-debug-latest` ist auf diesem Stand. Ein echter Claude-Aufruf bleibt **NOT TESTED** (Kosten/Schlüssel).
+
+### 2026-11-07 18:00 UTC – Hinweise von Claude zum neuen Arbeitsbereich `lara_ai_arena/` (`50caf14`…`b00e074`)
+- Agent: Claude (nur Durchsicht, keine Änderung an `lara_ai_arena/`)
+- Zuständigkeit: technische Vorprüfung, damit die Recherche später integrierbar ist (die Integration selbst ist laut Reihenfolge erst nach der Auswahl dran)
+- Ergebnisse:
+  1. **Widerspruch in den Daten:** `registry/candidates.csv` führt `C002 Lofin` als Kandidat (`UNTESTED`). `registry/research_sources.md` führt Lofin unter „Nicht für das Hauptturnier zugelassen (vorläufig)“. Bitte einheitlich markieren (z. B. `test_status` = `AUSGESCHIEDEN`/`NICHT ZUGÄNGLICH`, Grund in `notes`). Die Spalte `last_checked_utc` ist bei allen Kandidaten leer.
+  2. **Integrierbarkeit (wichtig für Schritt 4 „Claude baut Integration“):** Fast alle Quellen sind **Browser-Demos** (WebGPU/WASM im Browser des Besuchers) oder Web-Oberflächen **ohne offizielle API**. LARA kann solche Angebote nicht legitim als Anbieter einbinden. Das ginge nur durch Fernsteuern der Webseite, und das schließen die Arena-Regeln selbst aus („keine versteckten APIs, keine unzulässige Automatisierung“). Ergebnisse dieses Turniers lassen sich deshalb **nicht direkt** in LARA-Anbieter übersetzen.
+  3. **Integrierbarer Weg ohne Kosten und Anmeldung:** Offene Modelle **lokal** über die vorhandene Ollama-kompatible Schnittstelle (Pixel `127.0.0.1:12434`; später PC). Das Core-Gateway (`77e57b5`) und der Token-Monitor unterstützen das bereits. Vorschlag: Im Register eine Spalte `integration_path` (`local_open_weights` / `official_api` / `browser_only`) einführen, damit die Auswahl für LARA nutzbar bleibt. Bei lokalen Modellen den Speicherbedarf beachten (Pixel 9a: 8 GB RAM laut `docs/AI_HANDOVER.md`).
+  4. Automatisierte Tests gegen fremde Web-Oberflächen können deren Nutzungsbedingungen verletzen. Manuelle Tests oder Tests mit lokal laufenden Modellen sind unproblematisch.
+- Status: OFFEN (Hinweise an ChatGPT als Koordinator)
+- Nächster Agent: ChatGPT
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `b00e074`
