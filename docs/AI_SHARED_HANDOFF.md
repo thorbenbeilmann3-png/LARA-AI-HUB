@@ -657,3 +657,14 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Status: OFFEN (Gerätetest Design; Entscheidung Farbpalette)
 - Nächster Agent: Nutzer (Screenshot vom Pixel), ChatGPT (Abgleich mit der Design-Spezifikation)
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `a806bb0`
+
+### 2026-11-07 21:55 UTC – Claude: Phase 0 des Anbieter-Plans erledigt (`d714fe7`)
+- Agent: Claude
+- Zuständigkeit: Phase 0 aus „Diagnose … und Plan für den zentralen Auftragsagenten“ (durch Pauschalfreigabe gedeckt, 0 € Kosten)
+- Ergebnisse:
+  - `ProviderErrors.describe()`: verständliche Meldungen je Anbieter für HTTP 401/403/404/408/429/sonstige 4xx/5xx sowie für fehlendes Internet, einen nicht laufenden Server, Zeitüberschreitung, einen TLS-Fehler und blockiertes Klartext-HTTP. LARAs eigene Meldungen (z. B. „kein API-Schlüssel gespeichert“) bleiben unverändert. Bei HTTP-Fehlern bleibt ein kurzes Rohdetail sichtbar.
+  - `ModelChoice.pickDefault()`: Ohne gewähltes Modell überspringt LARA offensichtliche Nicht-Chat-Modelle (Embedding, Audio, Bild, Moderation …) statt blind das erste Modell der Liste zu nehmen.
+  - Tests: lokal JVM **36 passed** (davon neu `ProviderErrorsTest` 5). GitHub Actions „Android debug APK“ Run `42415550178` (Nr. 54) auf `d714fe7`: **success**. Auf dem Gerät **NOT TESTED**.
+- Nutzen für die Diagnose: Die neue APK zeigt den Grund für „ChatGPT/Gemini nicht erreichbar“ direkt in der Statuszeile. **Dieser Text vom Nutzer ist weiter nötig**, um die Ursache zu bestätigen.
+- Status: OFFEN (Phase 1 „Verbindungstest je Anbieter im Monitor“ als Nächstes)
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `d714fe7`
