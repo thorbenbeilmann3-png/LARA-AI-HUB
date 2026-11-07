@@ -325,6 +325,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
     var checking by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf(startupNotice ?: "Noch nicht verbunden – Verbindung zuerst testen.") }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var usageEntries by remember { mutableStateOf(UsageLog.load(context)) }
     var apiMode by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
     var availableModels by remember { mutableStateOf(emptyList<String>()) }
     var showModelPicker by remember { mutableStateOf(false) }
@@ -405,18 +406,18 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
             },
             bottomBar = {
                 NavigationBar {
-                    listOf("Chat", "Postfach", "ARENA", "PC").forEachIndexed { index, label ->
+                    listOf("Chat", "Postfach", "ARENA", "PC", "Monitor").forEachIndexed { index, label ->
                         NavigationBarItem(
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
-                            icon = { Text(listOf("✦", "✉", "⚔", "⌘")[index]) },
+                            icon = { Text(listOf("✦", "✉", "⚔", "⌘", "◉")[index]) },
                             label = { Text(label) }
                         )
                     }
                 }
             }
         ) { padding ->
-            val pageModifier = if (selectedTab == 3) Modifier.verticalScroll(rememberScrollState()) else Modifier
+            val pageModifier = if (selectedTab >= 3) Modifier.verticalScroll(rememberScrollState()) else Modifier
             Column(
                 Modifier.fillMaxSize().padding(padding).padding(16.dp).then(pageModifier),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -485,6 +486,10 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                                             )
                                             persistConfig()
                                             addMessage("LARA / $selectedModel", answer)
+                                            ApiConnection.lastUsage?.let {
+                                                UsageLog.add(context, it)
+                                                usageEntries = UsageLog.load(context)
+                                            }
                                             val apiLabel = if (selectedProvider == AiProvider.OLLAMA) "Ollama" else selectedProvider.label
                                             status = "Antwort erhalten · $apiLabel"
                                         } catch (e: Exception) {
@@ -544,6 +549,8 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                         }
                         Text("Status: Die Arena-Oberfläche ist vorbereitet. Modellverwaltung, Mehrfachaufrufe und Wertung sind noch nicht implementiert.")
                     }
+
+                    4 -> MonitorPage(context, auth, usageEntries, model)
 
                     3 -> {
                         Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge)

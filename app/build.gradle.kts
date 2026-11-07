@@ -49,4 +49,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // Real org.json on the JVM (Android's stub throws in local unit tests).
+    testImplementation("org.json:json:20240303")
 }

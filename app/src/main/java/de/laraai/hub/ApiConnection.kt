@@ -48,6 +48,11 @@ internal data class ApiDiscovery(
  * and are never written to logs or returned to the UI.
  */
 internal object ApiConnection {
+    /** Token counts of the most recent chat response (null before the first request). */
+    @Volatile
+    var lastUsage: TokenUsage? = null
+        private set
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -145,6 +150,14 @@ internal object ApiConnection {
             AiProvider.OLLAMA -> error("Interner Ollama-Routingfehler.")
         }
         val response = JSONObject(execute(request))
+        lastUsage = UsageParser.parse(
+            when (provider) {
+                AiProvider.ANTHROPIC -> "anthropic"
+                AiProvider.GEMINI -> "gemini"
+                else -> "openai"
+            },
+            provider.id, model, response, System.currentTimeMillis()
+        )
         when (provider) {
             AiProvider.ANTHROPIC -> {
                 val content = response.optJSONArray("content") ?: JSONArray()
@@ -225,6 +238,10 @@ internal object ApiConnection {
             .apply { if (!apiKey.isNullOrBlank()) header("Authorization", "Bearer $apiKey") }
             .build()
         val json = JSONObject(execute(request))
+        lastUsage = UsageParser.parse(
+            if (mode == ApiMode.OPENAI_COMPATIBLE) "openai" else "ollama",
+            AiProvider.OLLAMA.id, model, json, System.currentTimeMillis()
+        )
         return when (mode) {
             ApiMode.OPENAI_COMPATIBLE -> json.getJSONArray("choices")
                 .getJSONObject(0).getJSONObject("message").optString("content", "Leere Antwort")
