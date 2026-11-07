@@ -486,3 +486,19 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: ChatGPT prüft vorhandene Download-/Build-Pipeline und UI-Struktur; Claude übernimmt nur bei komplexen Architektur- oder Sicherheitsänderungen.
 - Übergabedaten: Repository `thorbenbeilmann3-png/LARA-AI-HUB`, Branch `claude/pc-thorben-setup-i4qwi5`, gemeinsame Übergabedatei `docs/AI_SHARED_HANDOFF.md`.
 - Dokumentation: Keine Installation oder Veröffentlichung ohne Nutzeraktion. Der Ja/Nein-Dialog ist eine explizite Aktionsfreigabe und ersetzt keine sichere Rechteprüfung.
+
+### 2026-11-07 17:33 UTC – Architekturhinweis zu „LARA GitHub-Arbeitsbereich“ (`577cf2d`)
+- Agent: Claude
+- Zuständigkeit: technische Architekturprüfung (laut „Nächster Agent“ im Konzept); **keine Umsetzung**
+- Eingaben: Konzept `577cf2d`, Code des Core (`python-worker/app/jobs.py`, `main.py`), `docs/AUFTRAGSSPEICHER.md`, `docs/MODELLWECHSEL.md`
+- Bearbeitung / Ergebnisse:
+  1. **Überschneidung (Konzeptpunkt 11, kein zweites System):** Aufgaben-Eingang und -Status (`tasks/inbox|active|done|blocked`) gibt es inhaltlich schon. Der Auftragsspeicher im Core (SQLite) führt Aufträge mit Schritten, Status (`open`, `in_progress`, `done`, `failed`, `blocked`), Agent, Ergebnis, Tokenverbrauch, Ereignisprotokoll und versionierten Übergabepaketen. Getestet ist er mit `pytest`, in der App ist er im Monitor-Tab sichtbar.
+     **Vorschlag:** Den Core als einzige Quelle der Wahrheit für den Aufgabenstatus behalten. `lara_workspace/tasks/` nur als **Export/Import** (Markdown/JSON, menschenlesbar, versionierbar in Git) erzeugen, nicht als zweiten Statusspeicher. Zwei Speicher mit eigenem Status würden auseinanderlaufen.
+  2. **Provider-Metadaten** (`lara_workspace/providers/`): Das passt gut. Heute stehen Anbieter fest im Code (`AiProvider` in `ApiConnection.kt`) und Kontextfenster im Core (`model_limits`). Eine nicht geheime Metadatei könnte beide speisen. Schlüssel bleiben im Android-Keystore bzw. in den Token-Dateien unter `~/.lara_core`, nie im Repository. Das stimmt mit Konzeptpunkt 6 überein.
+  3. **GitHub-Schreibzugriff aus LARA:** Dafür braucht LARA einen GitHub-Zugang (Token/App). Das ist ein neues Geheimnis mit Schreibrecht und **sicherheitsrelevant**. Es sollte mit eng begrenzten Rechten (nur dieses Repository, nur Arbeitsbranch), im Keystore und mit serverseitiger Freigabe vor jedem Push umgesetzt werden. Das braucht eine ausdrückliche Nutzerfreigabe, sobald es konkret wird.
+  4. **Zur offenen Frage „jeweiliger Ordner“:** Dem sicheren Vorschlag von ChatGPT stimme ich zu: Sortierung nach Projekt/Typ, Anbieter nur als Metadatum.
+- Status: OFFEN (Konzeptprüfung; Entscheidung des Nutzers bzw. Koordinators zu Punkt 1 nötig, bevor jemand Ordner anlegt)
+- Fehlende Informationen: Entscheidung „Core als einzige Statusquelle + Datei-Export“ ja oder nein
+- Nächster Agent: ChatGPT (Koordinator) bzw. Nutzer
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `577cf2d`
+- Dokumentation: dieser Eintrag
