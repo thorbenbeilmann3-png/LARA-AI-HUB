@@ -471,3 +471,62 @@ async def context_status(model: str, authorization: str | None = Header(default=
     except ValueError as exc:
         raise HTTPException(500, str(exc)) from exc
     return get_store().context_status(model, thresholds)
+
+
+# ---------------------------------------------------------------------------
+# Lossless model handoff (docs/MODELLWECHSEL.md)
+# ---------------------------------------------------------------------------
+from .jobs import confirmation_prompt  # noqa: E402
+
+
+class HandoffIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    from_model: str = Field(min_length=1, max_length=120)
+    to_model: str = Field(min_length=1, max_length=120)
+    decisions: list[str] = Field(default_factory=list, max_length=200)
+    important_files: list[str] = Field(default_factory=list, max_length=500)
+    tools: list[str] = Field(default_factory=list, max_length=100)
+    test_results: list[str] = Field(default_factory=list, max_length=500)
+    open_questions: list[str] = Field(default_factory=list, max_length=100)
+    sources: list[str] = Field(default_factory=list, max_length=200)
+    context_notes: list[str] = Field(default_factory=list, max_length=100)
+
+
+class HandoffConfirm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Either the raw reply text of the new model or an already parsed object.
+    reply_text: str | None = Field(default=None, max_length=50_000)
+    reply: dict[str, Any] | None = None
+
+
+@app.post("/v1/jobs/{job_id}/handoffs", status_code=201)
+async def create_handoff(job_id: str, body: HandoffIn,
+                         authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    extras = body.model_dump(exclude={"from_model", "to_model"})
+    try:
+        handoff = get_store().create_handoff(job_id, body.from_model, body.to_model, extras)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc
+    return {**handoff, "prompt": confirmation_prompt(handoff)}
+
+
+@app.get("/v1/handoffs/{handoff_id}")
+async def get_handoff(handoff_id: str, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().get_handoff(handoff_id)
+    except KeyError as exc:
+        raise _translate(exc) from exc
+
+
+@app.post("/v1/handoffs/{handoff_id}/confirm")
+async def confirm_handoff(handoff_id: str, body: HandoffConfirm,
+                          authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    if (body.reply_text is None) == (body.reply is None):
+        raise HTTPException(422, "Genau eines von reply_text oder reply angeben")
+    try:
+        return get_store().confirm_handoff(handoff_id, body.reply if body.reply is not None else body.reply_text)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc

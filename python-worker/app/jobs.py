@@ -12,7 +12,10 @@ Design rules (see docs/AUFTRAGSSPEICHER.md):
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import os
+import re
 import sqlite3
 import threading
 import time
@@ -59,6 +62,19 @@ CREATE TABLE IF NOT EXISTS model_limits (
     context_window INTEGER NOT NULL CHECK (context_window > 0),
     source TEXT NOT NULL,
     updated_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS handoffs (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL REFERENCES jobs(id),
+    version INTEGER NOT NULL,
+    from_model TEXT NOT NULL,
+    to_model TEXT NOT NULL,
+    package TEXT NOT NULL,
+    checksum TEXT NOT NULL,
+    status TEXT NOT NULL,
+    detail TEXT,
+    created_at REAL NOT NULL,
+    decided_at REAL
 );
 CREATE TABLE IF NOT EXISTS job_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,7 +188,11 @@ class JobStore:
             raise KeyError("Auftrag nicht gefunden")
         steps = [dict(r) for r in self._db.execute(
             "SELECT * FROM steps WHERE job_id=? ORDER BY position", (job_id,))]
-        return {**dict(job), **progress(steps), "steps": steps, "tokens": self.job_tokens(job_id)}
+        active = self._db.execute(
+            "SELECT to_model FROM handoffs WHERE job_id=? AND status='confirmed' ORDER BY version DESC LIMIT 1",
+            (job_id,)).fetchone()
+        return {**dict(job), **progress(steps), "steps": steps, "tokens": self.job_tokens(job_id),
+                "active_model": active["to_model"] if active else None}
 
     def list_jobs(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -264,6 +284,110 @@ class JobStore:
         result.update(remaining=max(0, window - used), percent=percent, status=thresholds.status(percent))
         return result
 
+    # -------------------------------------------------------------- handoffs
+
+    def create_handoff(self, job_id: str, from_model: str, to_model: str,
+                       extras: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Freeze the current work state into a versioned, checksummed handoff package.
+
+        The package is built from stored data (job, steps, tokens) plus optional
+        caller-supplied lists (decisions, files, tools, tests, questions, sources,
+        context). A newer package supersedes older unconfirmed ones.
+        """
+        extras = extras or {}
+        unknown = set(extras) - set(HANDOFF_EXTRA_FIELDS)
+        if unknown:
+            raise ValueError(f"Unbekannte Felder: {sorted(unknown)}")
+        with self._tx() as db:
+            job = self._get_job_unlocked(job_id)
+            if job["next_step"] is None and job["current_step"] is None:
+                raise ValueError("Auftrag hat keinen offenen Schritt; eine Übergabe ist nicht nötig")
+            version = (db.execute("SELECT MAX(version) AS v FROM handoffs WHERE job_id=?", (job_id,))
+                       .fetchone()["v"] or 0) + 1
+            steps = job["steps"]
+            package = {
+                "format": "lara-handoff/1",
+                "job_id": job_id,
+                "version": version,
+                "job_updated_at": job["updated_at"],
+                "from_model": from_model,
+                "to_model": to_model,
+                "original_request": job["title"],
+                "goal_and_requirements": job["goal"],
+                "completed_steps": [{"id": x["id"], "phase": x["phase"], "title": x["title"], "result": x["result"]}
+                                    for x in steps if x["status"] == "done"],
+                "progress": {"overall_percent": job["overall_percent"], "phases": job["phases"]},
+                "open_tasks": [{"id": x["id"], "phase": x["phase"], "title": x["title"], "status": x["status"]}
+                               for x in steps if x["status"] != "done"],
+                "current_step": job["current_step"],
+                "next_step": job["next_step"],
+                "known_errors": job["problems"],
+                "token_usage": job["tokens"],
+                **{name: list(extras.get(name, [])) for name in HANDOFF_EXTRA_FIELDS},
+            }
+            body = canonical_json(package)
+            checksum = hashlib.sha256(body.encode("utf-8")).hexdigest()
+            db.execute("UPDATE handoffs SET status='superseded', decided_at=? WHERE job_id=? AND status='prepared'",
+                       (time.time(), job_id))
+            handoff_id = uuid.uuid4().hex
+            db.execute(
+                "INSERT INTO handoffs (id, job_id, version, from_model, to_model, package, checksum, status, created_at) "
+                "VALUES (?,?,?,?,?,?,?, 'prepared', ?)",
+                (handoff_id, job_id, version, from_model, to_model, body, checksum, time.time()),
+            )
+            self._event(db, job_id, "handoff", f"v{version} {from_model} -> {to_model} vorbereitet")
+        return {"handoff_id": handoff_id, "status": "prepared", "checksum": checksum, "package": package}
+
+    def get_handoff(self, handoff_id: str) -> dict[str, Any]:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM handoffs WHERE id=?", (handoff_id,)).fetchone()
+            if row is None:
+                raise KeyError("Übergabe nicht gefunden")
+            return {**{k: row[k] for k in row.keys() if k != "package"}, "package": json.loads(row["package"])}
+
+    def confirm_handoff(self, handoff_id: str, reply: dict[str, Any] | str) -> dict[str, Any]:
+        """Check the new model's confirmation against the stored package.
+
+        A handoff is confirmed only if: the stored package is intact (checksum),
+        the job has not changed since the package was built, and the reply
+        repeats job_id, current/next step IDs and checksum exactly. Free text
+        such as "verstanden" never counts. On any mismatch the handoff is
+        rejected and the job is not released to the new model.
+        """
+        with self._tx() as db:
+            row = db.execute("SELECT * FROM handoffs WHERE id=?", (handoff_id,)).fetchone()
+            if row is None:
+                raise KeyError("Übergabe nicht gefunden")
+            if row["status"] != "prepared":
+                raise ValueError(f"Übergabe ist nicht offen (Status: {row['status']})")
+            problems: list[str] = []
+            if hashlib.sha256(row["package"].encode("utf-8")).hexdigest() != row["checksum"]:
+                problems.append("Gespeichertes Paket ist beschädigt (Prüfsumme)")
+            package = json.loads(row["package"])
+            job = self._get_job_unlocked(row["job_id"])
+            if job["updated_at"] != package["job_updated_at"]:
+                problems.append("Arbeitsstand hat sich seit der Übergabe geändert; neues Paket nötig")
+            parsed = reply if isinstance(reply, dict) else extract_json_object(reply)
+            if parsed is None:
+                problems.append("Antwort enthält keine strukturierte Bestätigung (JSON)")
+                parsed = {}
+            expected = {
+                "job_id": package["job_id"],
+                "current_step_id": (package["current_step"] or {}).get("id"),
+                "next_step_id": (package["next_step"] or {}).get("id"),
+                "checksum": row["checksum"],
+            }
+            for key, value in expected.items():
+                if parsed.get(key) != value:
+                    problems.append(f"{key} stimmt nicht überein")
+            status = "rejected" if problems else "confirmed"
+            db.execute("UPDATE handoffs SET status=?, detail=?, decided_at=? WHERE id=?",
+                       (status, "; ".join(problems) or None, time.time(), handoff_id))
+            self._event(db, row["job_id"], "handoff",
+                        f"v{row['version']} {status}" + (f": {'; '.join(problems)}" if problems else ""))
+        return {"handoff_id": handoff_id, "status": status, "problems": problems,
+                "released_to": row["to_model"] if status == "confirmed" else None}
+
     def _event(self, db: sqlite3.Connection, job_id: str, kind: str, detail: str) -> None:
         db.execute("INSERT INTO job_events (job_id, kind, detail, created_at) VALUES (?,?,?,?)",
                    (job_id, kind, detail, time.time()))
@@ -323,3 +447,39 @@ class _Tx:
             self.db.execute("ROLLBACK" if exc_type else "COMMIT")
         finally:
             self.lock.release()
+
+
+HANDOFF_EXTRA_FIELDS = ("decisions", "important_files", "tools", "test_results",
+                        "open_questions", "sources", "context_notes")
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def extract_json_object(text: str) -> dict[str, Any] | None:
+    """Return the first JSON object in a model reply (also inside ``` fences), else None."""
+    if not isinstance(text, str) or len(text) > 50_000:
+        return None
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", text):
+        try:
+            obj, _ = decoder.raw_decode(text, match.start())
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    return None
+
+
+def confirmation_prompt(handoff: dict[str, Any]) -> str:
+    """Instruction for the receiving model; its reply is checked by confirm_handoff."""
+    return (
+        "Du übernimmst einen laufenden LARA-Auftrag. Lies das folgende Übergabepaket vollständig.\n"
+        "Antworte ausschließlich mit einem JSON-Objekt mit genau diesen Feldern:\n"
+        '{"job_id": "...", "current_step_id": "... oder null", "next_step_id": "... oder null", '
+        '"checksum": "...", "goal_summary": "ein Satz"}\n'
+        "Übernimm job_id, Schritt-IDs und checksum unverändert aus dem Paket.\n\n"
+        f"checksum: {handoff['checksum']}\n"
+        f"Übergabepaket:\n{canonical_json(handoff['package'])}"
+    )
