@@ -463,3 +463,26 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: ChatGPT prüft Repository-Struktur und bestehende Architektur; Claude erhält den Konzeptstand für die spätere technische Architektur-/Integrationsprüfung.
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`; diese Datei ist die gemeinsame Übergabe.
 - Dokumentation: API-Schlüssel sind Zugangsdaten und gehören ausdrücklich nicht in GitHub. GitHub enthält nur Code, Vorlagen, Aufgabenbeschreibungen und nicht geheime Konfiguration.
+
+
+## Feature-Wunsch: LARA in ChatGPT herunterladen und Freigaben per Ja/Nein bestätigen
+
+- Agent: ChatGPT (Koordinator)
+- Zuständigkeit: Nutzerwunsch dokumentieren und Anforderungen für Download-/Freigabe-UX festhalten.
+- Eingaben: Nutzerwunsch vom 2026-11-07: Die LARA-App soll hier im ChatGPT-Chat zum Herunterladen bereitgestellt werden können. Zusätzlich soll es in LARA ein deutlich sichtbares Feld geben, über das der Nutzer Aktionen mit „Ja“ oder „Nein“ bestätigen bzw. ablehnen kann.
+- Bearbeitung / Anforderungen:
+  1. **APK-Download im Chat:** Wenn ein erfolgreicher Android-Build vorliegt, soll ChatGPT die tatsächlich gebaute und verifizierte APK als direkten Download-Link im Chat bereitstellen. Dazu müssen Workflow, Commit-Zuordnung, APK-Datei und Prüfsumme kontrolliert werden. Kein Download-Link auf eine ungeprüfte oder nicht vorhandene Datei.
+  2. **Download-Status:** Im Chat klar angeben, aus welchem Commit die APK stammt, wann sie gebaut wurde und ob ein echter Gerätetest erfolgt ist. Ein erfolgreicher CI-Build darf nicht als bestandener Gerätetest bezeichnet werden.
+  3. **Freigabefeld in LARA:** Für genehmigungspflichtige Aktionen erscheint eine verständliche Bestätigungsansicht mit Aktion, Ziel, betroffenen Dateien/Daten, möglichen Kosten und Risiken.
+  4. Zwei eindeutige Optionen: **„Ja, bestätigen“** und **„Nein, ablehnen“**. Keine vorausgewählte Zustimmung; ohne aktive Ja-Bestätigung wird die Aktion nicht ausgeführt.
+  5. Nach „Nein“ wird die Aktion abgebrochen und als abgelehnt dokumentiert. Nach „Ja“ wird nur genau die angezeigte Aktion freigegeben; keine stillschweigende Erweiterung des Umfangs.
+  6. Für besonders kritische Vorgänge (z. B. Löschen, Veröffentlichung, Merge, externe Übertragung oder kostenpflichtige API-Aufrufe) zusätzliche Authentifizierung bzw. erneute Bestätigung prüfen.
+  7. Freigabeprotokoll: Zeit, Nutzerentscheidung, Aktions-ID, angezeigter Umfang, Ergebnis und Fehlerstatus nachvollziehbar speichern; keine API-Schlüssel oder Geheimnisse protokollieren.
+  8. Bestätigungsdialoge müssen barrierearm, mobil gut bedienbar und auf dem Pixel 9a verständlich sein.
+  9. Die Bestätigungslogik muss serverseitig bzw. in der vertrauenswürdigen Ausführungsschicht durchgesetzt werden; ein bloßes UI-Feld darf keine Sicherheitsgrenze darstellen.
+- Ergebnisse: Anforderungen dokumentiert; Implementierung und APK-Bereitstellung noch nicht durchgeführt.
+- Status: OFFEN
+- Fehlende Informationen: „Hier bei ChatGPT herunterladen“ wird als Bereitstellung einer geprüften APK über einen Download-Link im Chat verstanden, nicht als Installation einer eigenständigen LARA-App innerhalb der ChatGPT-App. Falls eine andere Bedeutung gemeint ist, muss das vor der Umsetzung geklärt werden.
+- Nächster Agent: ChatGPT prüft vorhandene Download-/Build-Pipeline und UI-Struktur; Claude übernimmt nur bei komplexen Architektur- oder Sicherheitsänderungen.
+- Übergabedaten: Repository `thorbenbeilmann3-png/LARA-AI-HUB`, Branch `claude/pc-thorben-setup-i4qwi5`, gemeinsame Übergabedatei `docs/AI_SHARED_HANDOFF.md`.
+- Dokumentation: Keine Installation oder Veröffentlichung ohne Nutzeraktion. Der Ja/Nein-Dialog ist eine explizite Aktionsfreigabe und ersetzt keine sichere Rechteprüfung.
