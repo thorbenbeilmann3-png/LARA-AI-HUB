@@ -676,3 +676,10 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Kosten: 0 € für den Code. Hinweis: Ein Test bei einem Cloud-Anbieter ruft nach meinem Kenntnisstand nur die kostenlose Modellliste ab, das ist aber nicht für jeden Anbieter geprüft.
 - Status: OFFEN. Phasen 2–3 (Auftragsentwurf im Core, Ja/Nein/Andere-Idee-Dialog) sind die nächsten Claude-Aufgaben. Phasen 4–5 brauchen eine Nutzerfreigabe (Kosten bzw. GitHub-Schreibtoken).
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `d5a368b`
+
+### 2026-11-07 23:40 UTC – Claude: Phase 2 + Serverseite von Phase 3 (Auftragsentwürfe) – `a2f6b07`
+- Agent: Claude
+- Ergebnisse: Auftragsentwürfe im Core. „Ja, weitergeben“ / „Nein, ablehnen“ / „Ich habe eine andere Idee“ werden **nur mit dem Approver-Token** entschieden. Erst „Ja“ erzeugt einen Auftrag. Siehe `docs/AUFTRAGSENTWUERFE.md`.
+- Tests: `cd python-worker && pytest -q` lokal **100 passed** (neu `test_drafts.py` 11). Die CI läuft automatisch über „Python control plane tests“.
+- Offen: die drei Knöpfe in der App (Phase 3, Oberfläche) sowie Phase 4/5 (Nutzerfreigabe nötig).
+- Status: OFFEN
