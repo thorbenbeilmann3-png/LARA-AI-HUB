@@ -120,26 +120,27 @@ internal object ApiConnection {
         model: String,
         prompt: String,
         mode: ApiMode,
-        conversationId: String? = null
+        conversationId: String? = null,
+        history: List<ChatTurn> = emptyList()
     ): String = withContext(Dispatchers.IO) {
         require(model.isNotBlank()) { "Bitte zuerst ein Modell auswählen." }
         require(prompt.isNotBlank()) { "Die Nachricht darf nicht leer sein." }
 
         if (provider == AiProvider.OLLAMA) {
-            return@withContext chatOllama(endpoint, model, prompt, mode, null)
+            return@withContext chatOllama(endpoint, model, prompt, mode, null, history)
         }
 
         val root = rootUrl(endpoint, provider)
         val apiKey = loadProviderApiKey(context, provider, root)
         val request = when (provider) {
-            AiProvider.ANTHROPIC -> anthropicChatRequest(root, apiKey, model, prompt)
-            AiProvider.GEMINI -> geminiChatRequest(root, apiKey, model, prompt)
+            AiProvider.ANTHROPIC -> anthropicChatRequest(root, apiKey, model, prompt, history)
+            AiProvider.GEMINI -> geminiChatRequest(root, apiKey, model, prompt, history)
             AiProvider.OPENAI,
             AiProvider.OPENROUTER,
             AiProvider.CEREBRAS,
             AiProvider.OPENCLAW,
             AiProvider.CUSTOM -> openAiCompatibleChatRequest(
-                root, apiKey, model, prompt, provider, conversationId
+                root, apiKey, model, prompt, provider, conversationId, history
             )
             AiProvider.OLLAMA -> error("Interner Ollama-Routingfehler.")
         }
@@ -206,12 +207,13 @@ internal object ApiConnection {
         model: String,
         prompt: String,
         mode: ApiMode,
-        apiKey: String?
+        apiKey: String?,
+        history: List<ChatTurn> = emptyList()
     ): String {
         val root = rootUrl(endpoint, AiProvider.OLLAMA)
         val payload = JSONObject()
             .put("model", model)
-            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+            .put("messages", roleContentMessages(ChatHistory.build(history, prompt)))
             .put("stream", false)
         val url = when (mode) {
             ApiMode.OPENAI_COMPATIBLE -> "$root/v1/chat/completions"
@@ -236,11 +238,15 @@ internal object ApiConnection {
         model: String,
         prompt: String,
         provider: AiProvider,
-        conversationId: String?
+        conversationId: String?,
+        history: List<ChatTurn> = emptyList()
     ): Request {
+        // OpenClaw keeps the conversation server-side (user = conv:<id>); sending the
+        // local history as well would duplicate it.
+        val turns = if (provider == AiProvider.OPENCLAW) emptyList() else history
         val payload = JSONObject()
             .put("model", model)
-            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+            .put("messages", roleContentMessages(ChatHistory.build(turns, prompt)))
             .put("stream", false)
         if (provider == AiProvider.OPENCLAW && !conversationId.isNullOrBlank()) {
             payload.put("user", "conv:$conversationId")
@@ -256,14 +262,13 @@ internal object ApiConnection {
         root: String,
         apiKey: String?,
         model: String,
-        prompt: String
+        prompt: String,
+        history: List<ChatTurn> = emptyList()
     ): Request {
         val payload = JSONObject()
             .put("model", model)
             .put("max_tokens", 1024)
-            .put("messages", JSONArray().put(
-                JSONObject().put("role", "user").put("content", prompt)
-            ))
+            .put("messages", roleContentMessages(ChatHistory.build(history, prompt)))
         return Request.Builder()
             .url("$root/v1/messages")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
@@ -275,24 +280,31 @@ internal object ApiConnection {
         root: String,
         apiKey: String?,
         model: String,
-        prompt: String
+        prompt: String,
+        history: List<ChatTurn> = emptyList()
     ): Request {
         val safeModel = URLEncoder.encode(model.removePrefix("models/"), "UTF-8")
             .replace("+", "%20")
-        val payload = JSONObject().put(
-            "contents",
-            JSONArray().put(
-                JSONObject().put(
-                    "parts",
-                    JSONArray().put(JSONObject().put("text", prompt))
-                )
+        val contents = JSONArray()
+        ChatHistory.build(history, prompt).forEach { turn ->
+            contents.put(
+                JSONObject()
+                    .put("role", if (turn.role == "assistant") "model" else "user")
+                    .put("parts", JSONArray().put(JSONObject().put("text", turn.content)))
             )
-        )
+        }
+        val payload = JSONObject().put("contents", contents)
         return Request.Builder()
             .url("$root/v1beta/models/$safeModel:generateContent")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .apply { applyProviderHeaders(this, AiProvider.GEMINI, apiKey) }
             .build()
+    }
+
+    private fun roleContentMessages(turns: List<ChatTurn>): JSONArray {
+        val messages = JSONArray()
+        turns.forEach { messages.put(JSONObject().put("role", it.role).put("content", it.content)) }
+        return messages
     }
 
     private fun modelListUrl(root: String, provider: AiProvider): String =
@@ -390,11 +402,7 @@ internal object ApiConnection {
      * device (loopback). Gives a clear message instead of OkHttp's generic
      * "CLEARTEXT communication ... not permitted" error.
      */
-    internal fun isCleartextAllowed(url: String): Boolean {
-        if (!url.trim().startsWith("http://", ignoreCase = true)) return true
-        val host = runCatching { java.net.URI(url.trim()).host?.lowercase() }.getOrNull() ?: return false
-        return host == "127.0.0.1" || host == "localhost"
-    }
+    internal fun isCleartextAllowed(url: String): Boolean = CleartextPolicy.isAllowed(url)
 
     private fun requireCleartextAllowed(url: String) {
         require(isCleartextAllowed(url)) {

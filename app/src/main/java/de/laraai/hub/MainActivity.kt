@@ -307,6 +307,10 @@ private fun LaraHubApp() {
                                 val question = prompt.trim()
                                 if (question.isNotEmpty() && !busy) {
                                     prompt = ""
+                                    // Earlier turns of this chat, sent as context (bounded in ChatHistory).
+                                    val history = lines.mapNotNull { line ->
+                                        ChatHistory.fromStoredRole(line.role)?.let { ChatTurn(it, line.text) }
+                                    }
                                     addMessage("Du", question)
                                     busy = true
                                     status = "Verbinde und sende Anfrage …"
@@ -325,7 +329,8 @@ private fun LaraHubApp() {
                                                 selectedModel,
                                                 question,
                                                 discovery.mode,
-                                                if (selectedProvider == AiProvider.OPENCLAW) openClawConversationId else null
+                                                if (selectedProvider == AiProvider.OPENCLAW) openClawConversationId else null,
+                                                history
                                             )
                                             persistConfig()
                                             addMessage("LARA / $selectedModel", answer)

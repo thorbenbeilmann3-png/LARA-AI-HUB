@@ -30,6 +30,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Run unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest
+
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 
