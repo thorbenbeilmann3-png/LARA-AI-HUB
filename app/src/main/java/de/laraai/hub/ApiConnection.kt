@@ -159,12 +159,7 @@ internal object ApiConnection {
             provider.id, model, response, System.currentTimeMillis()
         )
         when (provider) {
-            AiProvider.ANTHROPIC -> {
-                val content = response.optJSONArray("content") ?: JSONArray()
-                (0 until content.length()).mapNotNull { index ->
-                    content.optJSONObject(index)?.optString("text")?.takeIf { it.isNotBlank() }
-                }.joinToString("\n").ifBlank { "Leere Antwort" }
-            }
+            AiProvider.ANTHROPIC -> AnthropicResponse.toChatText(response)
             AiProvider.GEMINI -> {
                 val candidates = response.optJSONArray("candidates") ?: JSONArray()
                 val parts = candidates.optJSONObject(0)
