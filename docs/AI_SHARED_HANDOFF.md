@@ -502,3 +502,26 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: ChatGPT (Koordinator) bzw. Nutzer
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `577cf2d`
 - Dokumentation: dieser Eintrag
+
+
+## Erweiterte Zusammenarbeit: Claude darf jederzeit dokumentieren; Recherche zuerst ohne kostenpflichtige LLM-Tokens
+
+- Agent: ChatGPT (Koordinator)
+- Zuständigkeit: Gemeinsame Arbeits- und Recherche-Regeln für ChatGPT, Claude und unterstützende Recherchewerkzeuge festhalten.
+- Eingaben: Nutzerwunsch vom 2026-11-07: Claude soll ebenso jederzeit eigene Ergebnisse, Vorschläge und Rückmeldungen dokumentieren dürfen, damit ChatGPT und Claude sich über GitHub austauschen können. Für Recherche sollen unterstützende Agenten/Werkzeuge eingesetzt werden, die möglichst keine kostenpflichtigen KI-API-Tokens verbrauchen.
+- Bearbeitung / Regeln:
+  1. **Claude darf schreiben:** Claude ist ausdrücklich berechtigt, jederzeit relevante Projektinformationen, Analysen, Rückfragen, Vorschläge, Entscheidungen, Testergebnisse, Fehlerberichte und Übergaben in der gemeinsamen GitHub-Datei bzw. den dafür vorgesehenen Projektordnern zu dokumentieren. Er soll neue Einträge ergänzen und fremde Einträge nicht ungeprüft überschreiben.
+  2. **ChatGPT darf schreiben:** ChatGPT dokumentiert seinerseits relevante Ergebnisse, Prüfungen, Aufgaben und Rückmeldungen. Beide Systeme lesen vor einer Änderung den aktuellen Stand und verwenden aktuelle Branch-/Datei-SHAs.
+  3. **Austausch:** GitHub ist das gemeinsame, nachvollziehbare Übergabemedium. Ein Commit ist keine Echtzeitnachricht und garantiert nicht, dass das andere Modell ihn automatisch bemerkt; das jeweils andere Modell muss die Änderungen abrufen.
+  4. **Recherche vor LLM-Aufruf:** Rechercheaufgaben zuerst mit nicht-LLM-basierten oder bereits verfügbaren Werkzeugen erledigen, soweit geeignet: GitHub-Suche, Repository-Dateien, offizielle Dokumentation, öffentliche Webseiten, lokale Tests, Parser, statische Analyse, Skripte und strukturierte APIs.
+  5. **Unteragenten/Worker:** Für klar abgegrenzte Recherche können spezialisierte Worker eingesetzt werden, wenn sie tatsächlich verfügbar sind. Bevorzugt werden deterministische Tools oder lokale/offline Prozesse ohne zusätzliche kostenpflichtige Modellaufrufe. Ergebnisse müssen Quellen/Dateipfade, Zeitstempel und Unsicherheiten enthalten.
+  6. **Token-Ehrlichkeit:** Nicht behaupten, ein KI-Unteragent arbeite völlig tokenfrei, wenn er ein Sprachmodell nutzt. Modellbasierte Unteragenten verbrauchen in der Regel Modell-Tokens oder Rechenressourcen; lokale Modelle können ohne externe API-Abrechnung laufen, sind aber nicht kosten- oder ressourcenfrei. Kostenpflichtige API-Aufrufe benötigen weiterhin die gesonderte Nutzerfreigabe.
+  7. **Keine erfundenen Agenten:** Nur tatsächlich vorhandene Unteragenten/Tools einsetzen. Wenn keine verfügbar sind, führt der Hauptagent die Recherche mit Werkzeugen selbst aus und dokumentiert dies ehrlich.
+  8. **Qualitätskontrolle:** Rechercheergebnisse werden vom Koordinator geprüft, Quellen auf Originalität/Aktualität kontrolliert und bei kritischen Änderungen unabhängig gegengeprüft. Unterstützende Worker dürfen keine eigenständigen riskanten Schreib-, Lösch-, Veröffentlichungs- oder kostenpflichtigen Aktionen ausführen.
+  9. **Priorität:** Bestehende LARA-Funktionen und bereits genehmigte Aufgaben laufen weiter. Diese Zusammenarbeit-/Recherche-Regeln sind eine Ergänzung und dürfen keine vorhandenen Funktionen verdrängen oder entfernen.
+- Ergebnisse: Gemeinsame Schreibberechtigung für Claude und ChatGPT sowie kostenbewusste Recherche-Regeln dokumentiert.
+- Status: OFFEN
+- Fehlende Informationen: Keine für die Regel. Die konkrete Auswahl verfügbarer Worker/Tools erfolgt bei der jeweiligen Aufgabe nach tatsächlicher Verfügbarkeit und Kosten.
+- Nächster Agent: Claude und ChatGPT wenden die Regeln bei künftigen Aufgaben an; ChatGPT prüft die Einträge und Änderungen unabhängig.
+- Übergabedaten: Repository `thorbenbeilmann3-png/LARA-AI-HUB`, Branch `claude/pc-thorben-setup-i4qwi5`, Datei `docs/AI_SHARED_HANDOFF.md`.
+- Dokumentation: Keine Tokenfreiheit versprechen, wenn ein LLM beteiligt ist. Nicht-LLM-Werkzeuge und lokale Prozesse bevorzugen; Kosten und Ressourcenverbrauch transparent machen.
