@@ -553,3 +553,32 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: ChatGPT (Abruf dieses Eintrags, Prüfung, Ergebnis unter „Ergebnisse“ im Abschnitt `840eaa3` nachtragen)
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `8e5f960`
 - Dokumentation: dieser Eintrag
+
+
+## Neuer Auftrag: Zentraler LARA-Auftragsagent mit ChatGPT als Eingang, Ausarbeitung und Routing
+
+- Agent: ChatGPT (Koordinator)
+- Zuständigkeit: Nutzerwunsch in eine verbindliche Produktanforderung und einen priorisierten Umsetzungsauftrag übersetzen.
+- Eingaben: Nutzerbeobachtung: In der aktuellen App sind ChatGPT und Gemini nicht erreichbar. Gewünscht ist ein zentraler Agent, der Aufträge in der App annimmt, sie mit ChatGPT ausarbeitet und erst nach Nutzerfreigabe an das passende KI-Profil/Modell bzw. Claude-Code-Repository weitergibt. Der Nutzer möchte den Auftrag in natürlicher Sprache entwickeln können und am Ende möglichst nur „Ja“, „Nein“ oder eine alternative Idee äußern müssen.
+- Bearbeitung / Soll-Verhalten:
+  1. Zentraler Auftragsagent in LARA: Ein klar erkennbarer Eingangspunkt nimmt jeden neuen Auftrag entgegen und führt den Nutzer durch den Prozess.
+  2. ChatGPT als Auftrags- und Klärungsinstanz: ChatGPT erkennt das Ziel, fragt nur bei notwendigen Lücken nach, formuliert eine verständliche Aufgabenbeschreibung und arbeitet sie dialogisch mit dem Nutzer aus. Es darf sinnvolle Alternativen vorschlagen.
+  3. Modell-/Profil-Auswahl: ChatGPT bewertet, welches vorhandene KI-Profil geeignet ist (z. B. Claude Code für umfangreiche Repository-/Programmierarbeiten; Gemini oder andere Profile nur, wenn Integration und Erreichbarkeit tatsächlich funktionieren). Auswahlgrund und mögliche Kosten transparent anzeigen.
+  4. Übergabevorschlag: Vor Weitergabe erstellt ChatGPT einen vollständigen Auftrag mit Ziel, Kontext, Anforderungen, erlaubten Dateien/Ordnern, Grenzen, Akzeptanzkriterien und Tests. Nutzer sieht eine Zusammenfassung und muss ausdrücklich freigeben.
+  5. Einfache Entscheidung: Drei klare Antworten: „Ja, weitergeben“, „Nein, ablehnen“ und „Ich habe eine andere Idee“. Die dritte Option führt zurück in den Dialog. Keine vorausgewählte Zustimmung; ohne explizites Ja keine Übergabe.
+  6. Repository-Übergabe: Nach Ja sendet LARA den bestätigten Auftrag in den passenden Projekt-/Repository-Eingang (z. B. GitHub-Branch und strukturierte Aufgaben-/Handoff-Datei). Projekt, Branch und erlaubte Pfade vorher prüfen. Keine Geheimnisse im Repository.
+  7. Rückkanal zur App: Antworten, Rückfragen, Fortschritt, geänderte Dateien, Commits, Testergebnisse, Fehler und Abschlussberichte werden wieder in LARA angezeigt. ChatGPT fasst sie verständlich zusammen und klärt offene Punkte mit dem Nutzer.
+  8. Fortlaufende Abstimmung: Nutzerentscheidungen werden an den ausführenden Agenten zurückgegeben; Verlauf und Auftrag bleiben konsistent. Keine stille Erweiterung des genehmigten Umfangs.
+  9. Anbieter-Erreichbarkeit: ChatGPT- und Gemini-Verbindungen als eigener Fehler-/Diagnosepunkt prüfen. Je Anbieter Verbindungsstatus, letzte erfolgreiche Prüfung, verständliche Fehlermeldung und Wiederholungsmöglichkeit anzeigen. Nicht erreichbare Anbieter nicht als verfügbar darstellen. Claude nicht stillschweigend als Ersatz wählen, wenn Kosten oder Berechtigungen abweichen.
+  10. Sicherheit/Kosten: Vor kostenpflichtigen Modellaufrufen, externen Aktionen oder Schreibzugriffen Umfang und Kosten anzeigen und erforderliche Freigabe einholen. API-Schlüssel sicher lokal/Keystore speichern. Nur bestätigte Aufträge übergeben.
+  11. Bestehendes bewahren: Die Funktion ergänzt vorhandene Chats, Anbieter, Agenten, Aufgabenverwaltung und LARA-Funktionen; sie darf nichts Bestehendes entfernen, überschreiben oder verdrängen.
+  12. Recherche/Worker: Zuerst verfügbare nicht-LLM-Werkzeuge und lokale Prozesse nutzen. Unteragenten nur einsetzen, wenn tatsächlich verfügbar; Token- und Kostenverbrauch ehrlich ausweisen.
+- Vorgaben: Nutzer entwickelt die Idee mit ChatGPT; ChatGPT ist zentrale Auftragsannahme und -koordination. Nutzerfreigabe vor Weitergabe ist zwingend. Keine Annahme, dass Gemini/ChatGPT aktuell technisch erreichbar sind.
+- Belegte Fakten: Nutzer berichtet, dass ChatGPT und Gemini in der aktuellen App nicht erreichbar sind. Ursache bislang nicht diagnostiziert.
+- Annahmen: Core-Auftragsspeicher und vorhandene Agenten-/Provider-Komponenten können möglicherweise erweitert werden; Claude muss dies anhand des aktuellen Codes prüfen.
+- Ergebnisse: Produktanforderung für Provider-Diagnose und zentralen Auftragsagenten dokumentiert. Noch keine Implementierung oder technische Fehlerursache bestätigt.
+- Status: OFFEN
+- Fehlende Informationen: Keine für die Anforderung. Technische Ursachen, Schnittstellen und Dateien sind durch Codeprüfung zu ermitteln.
+- Nächster Agent: Claude Code prüft den aktuellen Stand, diagnostiziert zuerst die ChatGPT-/Gemini-Verbindungsfehler und schlägt danach einen phasenweisen, rückwärtskompatiblen Umsetzungsplan samt Tests vor. Keine größere Umsetzung ohne passende Freigabe.
+- Übergabedaten: Repository `thorbenbeilmann3-png/LARA-AI-HUB`, Branch `claude/pc-thorben-setup-i4qwi5`, Datei `docs/AI_SHARED_HANDOFF.md`.
+- Dokumentation: Nutzerentscheidungen bleiben bei jedem Übergabeschritt sichtbar. App-Antworten: Ja / Nein / Andere Idee. Rückmeldungen des ausführenden Agenten müssen in die App zurückfließen.
