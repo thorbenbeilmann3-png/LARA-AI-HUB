@@ -47,6 +47,8 @@ internal fun MonitorPage(context: Context, auth: AuthRequester, usage: List<Toke
 
     Text("KI- und Auftragsmonitor", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
 
+    ProviderStatusCard(context)
+
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Letzte Anfrage", style = MaterialTheme.typography.titleMedium)
@@ -136,3 +138,75 @@ internal fun MonitorPage(context: Context, auth: AuthRequester, usage: List<Toke
         }
     }
 }
+
+/**
+ * Connection test per provider (fetches only the model list, no chat request).
+ * A provider is shown as available only after a successful test within 24 h.
+ */
+@Composable
+private fun ProviderStatusCard(context: Context) {
+    val prefs = remember { context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
+    var checks by remember {
+        mutableStateOf(AiProvider.entries.associate { it.id to ProviderStatusStore.load(context, it.id) })
+    }
+    var running by remember { mutableStateOf<String?>(null) }
+
+    GlassCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Anbieter-Status", style = MaterialTheme.typography.titleMedium)
+            Text("„Testen“ ruft nur die Modellliste ab (kein Chat). Verfügbar heißt: erfolgreich geprüft in den letzten 24 Stunden.",
+                style = MaterialTheme.typography.bodySmall, color = LaraColors.TextMuted)
+            AiProvider.entries.forEach { provider ->
+                val check = checks[provider.id]
+                val state = ProviderAvailability.state(check, System.currentTimeMillis())
+                val color = when (state) {
+                    ProviderAvailability.State.VERFUEGBAR -> LaraColors.Ok
+                    ProviderAvailability.State.FEHLER -> LaraColors.Error
+                    else -> LaraColors.TextMuted
+                }
+                Column(Modifier.fillMaxWidth()) {
+                    androidx.compose.foundation.layout.Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text(provider.label, style = MaterialTheme.typography.bodyMedium)
+                        OutlinedButton(
+                            enabled = running == null,
+                            onClick = {
+                                val saved = prefs.getString("endpoint", "") ?: ""
+                                val endpoint = if (prefs.getString("provider_id", "") == provider.id && saved.isNotBlank()) saved
+                                    else provider.defaultEndpoint
+                                running = provider.id
+                                scope.launch {
+                                    val now = System.currentTimeMillis()
+                                    val result = if (endpoint.isBlank()) {
+                                        ProviderAvailability.merge(check, provider.id, false, "Adresse fehlt – unter Tools eintragen.", now)
+                                    } else {
+                                        try {
+                                            val d = ApiConnection.discover(context, provider, endpoint)
+                                            ProviderAvailability.merge(check, provider.id, true, "${d.models.size} Modelle gefunden", now)
+                                        } catch (e: Exception) {
+                                            ProviderAvailability.merge(check, provider.id, false, ProviderErrors.describe(provider.label, e), now)
+                                        }
+                                    }
+                                    ProviderStatusStore.save(context, result)
+                                    checks = checks + (provider.id to result)
+                                    running = null
+                                }
+                            }
+                        ) { Text(if (running == provider.id) "Prüfe …" else "Testen") }
+                    }
+                    Text(ProviderAvailability.label(state) + (check?.let { " · " + it.message } ?: ""),
+                        color = color, style = MaterialTheme.typography.bodySmall)
+                    check?.lastSuccessMs?.let {
+                        Text("Zuletzt erfolgreich: " + java.text.SimpleDateFormat("dd.MM. HH:mm", java.util.Locale.GERMANY).format(java.util.Date(it)),
+                            color = LaraColors.TextMuted, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
