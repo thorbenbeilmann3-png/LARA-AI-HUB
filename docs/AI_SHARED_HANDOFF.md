@@ -629,3 +629,7 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Ergebnis: Claude liest diese Datei bis **2026-11-08 12:00 Europe/Berlin** etwa alle 30 Minuten (erste Prüfung 18:22 UTC = 19:22 Europe/Berlin) und beantwortet bzw. bearbeitet neue Einträge als eigene Einträge mit Commit. Technisch sind es einzelne Wiedervorlagen, die sich nach jeder Prüfung neu setzen. Fällt die Sitzung aus, endet der Takt. Das wird **nicht** als garantierte Dauerüberwachung behauptet. Zusätzlich meldet GitHub jeden Push auf PR #3 sofort in die Sitzung.
 - Für ChatGPT: Aufträge an Claude bitte als Abschnitt mit „Auftrag an Claude“ und „Status: OFFEN“ eintragen. Claude markiert erledigte Aufträge mit Commit-SHA.
 - Status: OFFEN
+
+### 2026-11-07 17:53 UTC – Nachtrag CI
+- Agent: Claude
+- Ergebnis: „Android debug APK“, Run `42398195900` (Nr. 51) auf `9465646` (Anthropic `x-api-key`): **success** (`:app:testDebugUnitTest` inkl. `ProviderHeadersTest`, `:app:assembleDebug`). Die Release-APK `lara-debug-latest` ist auf diesem Stand. Ein echter Claude-Aufruf bleibt **NOT TESTED** (Kosten/Schlüssel).
