@@ -582,3 +582,43 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: Claude Code prüft den aktuellen Stand, diagnostiziert zuerst die ChatGPT-/Gemini-Verbindungsfehler und schlägt danach einen phasenweisen, rückwärtskompatiblen Umsetzungsplan samt Tests vor. Keine größere Umsetzung ohne passende Freigabe.
 - Übergabedaten: Repository `thorbenbeilmann3-png/LARA-AI-HUB`, Branch `claude/pc-thorben-setup-i4qwi5`, Datei `docs/AI_SHARED_HANDOFF.md`.
 - Dokumentation: Nutzerentscheidungen bleiben bei jedem Übergabeschritt sichtbar. App-Antworten: Ja / Nein / Andere Idee. Rückmeldungen des ausführenden Agenten müssen in die App zurückfließen.
+
+### 2026-11-07 17:55 UTC (18:55 Europe/Berlin) – Diagnose „ChatGPT/Gemini nicht erreichbar“ und Plan für den zentralen Auftragsagenten (`70f9a8d`)
+- Agent: Claude
+- Zuständigkeit: Diagnose zuerst, dann phasenweiser Plan; keine größere Umsetzung ohne Freigabe (laut Auftrag)
+- Eingaben: Auftrag `70f9a8d`; Code `app/src/main/java/de/laraai/hub/ApiConnection.kt`, `ApiKeyStore.kt`, `MainActivity.kt`; Claude-API-Referenz der Sitzung
+- Methode: **statische Codeprüfung**. Live-Tests sind nicht möglich: keine Anbieter-Schlüssel (Kosten), und `api.openai.com` bzw. `generativelanguage.googleapis.com` sind von dieser Cloud-Umgebung aus nicht prüfbar. Die Ursache ist deshalb **nicht bestätigt**, es sind begründete Kandidaten.
+
+#### Befund A – echter Fehler gefunden und behoben (betrifft Claude, nicht ChatGPT/Gemini)
+- Der Anthropic-Zweig sendete den API-Schlüssel als `Authorization: Bearer`. Laut offizieller Referenz gehören API-Schlüssel in `x-api-key`, Bearer ist für OAuth-Tokens mit Beta-Header. Ein echter Claude-Aufruf wäre mit HTTP 401 gescheitert.
+- **Selbstkritik:** Das hätte im Auftrag „Anthropic-Anschluss robust machen“ (`cfda044`) auffallen müssen und ist dort übersehen worden.
+- Behoben in **`9465646`**: neue reine Funktion `providerHeaders()` mit 4 Unit-Tests (Anthropic `x-api-key` + `anthropic-version`, Gemini `x-goog-api-key`, OpenAI-kompatibel Bearer, ohne Schlüssel kein Auth-Header). Lokal JVM: **31 passed** (Anthropic 9, ChatHistory 9, Cleartext 3, ProviderHeaders 4, SessionLock 6). Android-CI: gestartet, **Ergebnis offen**.
+
+#### Befund B – wahrscheinliche Ursachen für „ChatGPT/Gemini nicht erreichbar“ (unbestätigt, nach Wahrscheinlichkeit)
+1. **Kein API-Schlüssel gespeichert.** Für „OpenAI“ und „Google · Gemini“ verlangt LARA einen API-Schlüssel und meldet sonst „Für … ist noch kein API-Schlüssel gespeichert.“ Ein **ChatGPT-Abo ist kein OpenAI-API-Zugang**, und ein Google-Konto ist kein Gemini-API-Schlüssel. Beides sind getrennte, kostenpflichtige bzw. kontingentierte Zugänge.
+2. **Schlüssel gesperrt oder nicht übernommen** (seit der App-Sperre `91d3294`): Wurde „Ohne API-Schlüssel fortfahren“ gewählt, die Sperre abgebrochen oder ein alter Schlüssel war nicht lesbar, kommt „LARA ist gesperrt …“ bzw. „… nicht mehr lesbar. Bitte erneut speichern.“
+3. **Ungeeignetes Modell bei OpenAI:** Ist kein Modell gewählt, nimmt LARA das **erste** Modell aus `/v1/models`. Diese Liste enthält auch Modelle, die nicht chatten können (z. B. Embeddings oder Audio). Der Chat scheitert dann mit HTTP 4xx. Bei Gemini werden schon nur Modelle mit `generateContent` angeboten.
+4. **Alte APK:** Läuft auf dem Pixel eine Version vor diesen Änderungen, gelten dort andere Fehlerbilder.
+5. Ungeprüft und nach meinem Kenntnisstand unwahrscheinlich: Endpunkte. OpenAI `https://api.openai.com/v1/chat/completions`, Gemini `…/v1beta/models/{model}:generateContent` mit Header `x-goog-api-key`. Die Doku beider Anbieter ist in dieser Umgebung gesperrt.
+- **Zum Bestätigen nötig (BLOCKIERT):** der **genaue Fehlertext** aus der Statuszeile in LARA, getrennt für OpenAI und Gemini, die installierte APK-Version (Commit aus dem Release) und die Angabe, ob für beide ein API-Schlüssel gespeichert ist. Ohne diese Angaben bleibt die Ursache eine Annahme.
+
+#### Wichtige Grenze für den Auftragsagenten
+- „ChatGPT als Auftrags- und Klärungsinstanz **in der App**“ bedeutet technisch einen **OpenAI-API-Zugang mit Kosten pro Anfrage**. Ein ChatGPT-Konto lässt sich von Apps nicht offiziell fernsteuern. Alternativen: lokales Modell (kostenlos, aber das 0,5B-Modell ist für das Ausarbeiten von Aufträgen zu schwach), Claude- oder Gemini-API (ebenfalls Kosten bzw. Kontingent). **Die Wahl braucht eine ausdrückliche Nutzerfreigabe (Kosten).**
+
+#### Plan (phasenweise, rückwärtskompatibel)
+| Phase | Inhalt | Wer | Kosten | Freigabe |
+|---|---|---|---|---|
+| 0 | Anthropic-Header (erledigt `9465646`); verständliche, je Anbieter getrennte Fehlermeldungen (kein Schlüssel / gesperrt / 401 Schlüssel ungültig / 403 / 404 Modell / 429 Kontingent / Netzwerk / Zeitüberschreitung); OpenAI-Modellwahl: beim leeren Modell nicht blind das erste nehmen | Claude | 0 € | durch Pauschalfreigabe gedeckt |
+| 1 | Anbieter-Diagnose im Monitor: je Anbieter „Verbindung testen“, Status, letzte erfolgreiche Prüfung, Fehlertext, Wiederholen. Nicht erreichbare Anbieter nicht als verfügbar zeigen | Claude | 0 € (Modellliste abrufen ist kostenlos, nach Kenntnisstand) | gedeckt |
+| 2 | Auftragsannahme im Core: Entwurf (Ziel, Kontext, Grenzen, Akzeptanzkriterien, Tests) als Auftrag im vorhandenen Auftragsspeicher, Status „Entwurf“ | Claude | 0 € | gedeckt |
+| 3 | Freigabedialog in der App: „Ja, weitergeben“ / „Nein, ablehnen“ / „Ich habe eine andere Idee“. Serverseitig mit den vorhandenen einmaligen Freigaben (Approver-Token) | Claude | 0 € | gedeckt |
+| 4 | Ausarbeitung durch ein Modell (OpenAI, Gemini, Claude oder lokal) | Claude | **Kosten je Anfrage** | **ausdrückliche Nutzerfreigabe + API-Schlüssel nötig** |
+| 5 | Übergabe ins Repository (Branch, Aufgaben-/Handoff-Datei) | Claude | 0 € | **ausdrückliche Freigabe**: GitHub-Token mit Schreibrecht ist ein neues Geheimnis (Keystore, nur dieses Repo, nur Arbeitsbranch) |
+| 6 | Rückkanal: Commits, Tests, Fehler und Rückfragen in LARA anzeigen | Claude/ChatGPT | 0 € | nach Phase 5 |
+
+- Ergebnisse: Fehler A behoben (CI offen); Ursachen B eingegrenzt, nicht bestätigt; Plan erstellt
+- Status: OFFEN
+- Fehlende Informationen: Fehlertexte, APK-Version, ob Schlüssel gespeichert sind (BLOCKIERT für die Bestätigung); Nutzerentscheidung zu Phase 4 und 5
+- Nächster Agent: Nutzer (Fehlertexte liefern); Claude (Phase 0–1, durch Pauschalfreigabe bis 12:00 gedeckt); ChatGPT (Prüfung von `9465646` und diesem Plan)
+- Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `9465646`
+- Dokumentation: dieser Eintrag
