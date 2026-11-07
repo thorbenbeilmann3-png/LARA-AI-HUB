@@ -27,13 +27,15 @@ def test_task_list_returns_only_registered_tasks():
     assert task_ids == {"python.runtime_info", "ollama.list_models"}
 
 
-def test_task_requires_explicit_approval():
+def test_read_only_task_runs_without_approval_flag():
+    # python.runtime_info is registered with approval_required=False; the old
+    # client-side "approved" flag no longer has any effect.
     response = client.post(
         "/v1/automation/run",
         headers={"Authorization": f"Bearer {TOKEN}"},
-        json={"task_id": "python.runtime_info", "approved": False},
+        json={"task_id": "python.runtime_info"},
     )
-    assert response.status_code == 403
+    assert response.status_code == 200
 
 
 def test_registered_python_runtime_task_runs():
