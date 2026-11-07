@@ -95,3 +95,34 @@ Die freigegebene Bildübersicht mit zehn Ansichten wurde in der ChatGPT-Unterhal
 - Bestehende PC-Weboberfläche: `index.html`
 - Bestehende Roadmap: `docs/ROADMAP.md`
 - OpenClaw-Integrationshinweise: `docs/OPENCLAW_SETUP.md`
+
+
+## 8. Windows-Desktop, Autostart und sichere Softwareinstallation
+
+### Desktop und Startverhalten
+- LARA soll als Desktop-Anwendung bzw. klar erkennbare Desktop-Oberfläche verfügbar sein.
+- Beim Windows-Anmelden automatisch starten; bevorzugt als normale Benutzeranwendung ohne unnötige Administratorrechte.
+- Optionaler Start im maximierten Fenster oder Vollbild. Der Nutzer muss dies in LARA jederzeit ändern und den Autostart deaktivieren können.
+- Kein versteckter Hintergrunddienst, keine Tarnung und keine Umgehung von Windows-Sicherheitsabfragen.
+- Startstatus, letzte Startzeit und Fehler verständlich anzeigen.
+
+### Automatisierte Softwareinstallation – Sicherheitsprinzip
+Ziel ist eine möglichst weitgehend automatisierte Installation und Aktualisierung, aber niemals auf Kosten der Sicherheit. LARA darf Installationen vorbereiten und durchführen, wenn die Sicherheitsprüfungen bestanden sind und die Berechtigung dafür vorliegt.
+
+1. **Quellen-Allowlist:** Vorrangig offizielle Hersteller-Websites, offizielle Microsoft-/Windows-Komponenten und verifizierte Paketquellen wie die offiziellen WinGet-Quellen. Keine Download-Portale, Cracks, Reuploads, inoffiziellen Mirrors oder unbekannten Skript-Sammlungen.
+2. **Paketidentität prüfen:** Exakter Paketname, Herausgeber, Produkt und Quelle müssen vor Installation angezeigt und plausibilisiert werden.
+3. **Signaturprüfung:** Authenticode-/Code-Signatur und Herausgeber prüfen, soweit verfügbar. Fehlende, ungültige oder unerwartete Signaturen führen standardmäßig zum Stopp.
+4. **Integritätsprüfung:** Herstellerseitig veröffentlichte Hashwerte vergleichen, sofern verfügbar. Hashwerte niemals selbst als vertrauenswürdigen Sollwert erfinden.
+5. **Malwareprüfung:** Datei vor Ausführung mit Microsoft Defender bzw. der installierten, aktiven Sicherheitslösung prüfen; Schutzstatus und Scan-Ergebnis protokollieren. Bei Fund, Verdacht, Scanfehler oder deaktiviertem Schutz: Installation blockieren und Nutzer informieren.
+6. **Transparente Freigabe:** Vor jeder Installation Name, Herausgeber, Quelle, Version, Rechtebedarf und geplante Änderungen anzeigen. Automatische Installation nur für ausdrücklich freigegebene Softwarekategorien/Regeln; neue oder administrative Installationen benötigen Bestätigung.
+7. **Least Privilege:** Keine dauerhaften Administratorrechte. Erhöhte Rechte nur für den konkreten Schritt, mit Windows-UAC und ausdrücklicher Freigabe.
+8. **Sicherer Ablauf:** Download in Quarantäne-/Temp-Verzeichnis, Prüfung, erst danach Ausführung. Keine ungeprüften PowerShell-/CMD-Befehle aus Webseiten oder KI-Ausgaben starten.
+9. **Nachkontrolle:** Installationsstatus, installierte Version, Installationsquelle und Prüfergebnisse protokollieren; nach Möglichkeit erneuter Defender-Scan und Prüfung des installierten Programms.
+10. **Abbruch und Wiederherstellung:** Bei Warnungen, Abweichungen, Netzwerk-/Prüffehlern oder unbekannten Herausgebern sicher abbrechen. Keine automatische Deaktivierung von Defender, Firewall, SmartScreen oder Updates. Vor Updates Wiederherstellungs-/Rollback-Möglichkeit prüfen.
+
+### Vertrauens- und Protokollregeln
+- Jede Installation erhält einen Audit-Eintrag mit Zeit, Paket-ID, Version, offizieller Quelle, Signatur-/Hash-/Scanstatus, Freigabe und Ergebnis.
+- KI-Agenten dürfen keine Sicherheitsprüfung überspringen und keine Allowlist selbst erweitern.
+- Nutzer kann jederzeit sehen, was installiert wurde und warum eine Installation blockiert wurde.
+- Standard bei Unsicherheit: **nicht installieren**; verständlich erklären, was fehlt.
+- Keine absolute Malwarefreiheit versprechen: Signaturen, Hashes und Virenscans reduzieren Risiken, garantieren aber keine hundertprozentige Sicherheit.
