@@ -589,3 +589,73 @@ async def gateway_local_chat(body: GatewayChat, authorization: str | None = Head
         raise _translate(exc) from exc
     except ValueError as exc:
         raise HTTPException(500, str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Order drafts: proposal -> user decision (Ja / Nein / Andere Idee) -> job
+# Decisions require the separate approver token (docs/AUFTRAGSENTWUERFE.md).
+# ---------------------------------------------------------------------------
+class DraftStep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    phase: str = Field(min_length=1, max_length=60)
+    title: str = Field(min_length=1, max_length=200)
+    weight: float = Field(default=1, gt=0, le=1000)
+
+
+class DraftDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    context: str | None = Field(default=None, max_length=8000)
+    allowed_paths: list[str] = Field(default_factory=list, max_length=100)
+    limits: list[str] = Field(default_factory=list, max_length=50)
+    acceptance_criteria: list[str] = Field(default_factory=list, max_length=50)
+    tests: list[str] = Field(default_factory=list, max_length=50)
+    suggested_agent: str | None = Field(default=None, max_length=80)
+    estimated_cost: str | None = Field(default=None, max_length=200)
+    steps: list[DraftStep] | None = Field(default=None, max_length=200)
+
+
+class DraftIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=200)
+    goal: str = Field(min_length=1, max_length=4000)
+    details: DraftDetails = Field(default_factory=DraftDetails)
+
+
+class DraftDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["approve", "reject", "revise"]
+    note: str | None = Field(default=None, max_length=4000)
+
+
+@app.post("/v1/drafts", status_code=201)
+async def create_draft(body: DraftIn, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().create_draft(body.title, body.goal, body.details.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise _translate(exc) from exc
+
+
+@app.get("/v1/drafts")
+async def list_drafts(status: Literal["draft", "revise", "approved", "rejected"] | None = None,
+                      authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    return {"drafts": get_store().list_drafts(status)}
+
+
+@app.put("/v1/drafts/{draft_id}")
+async def update_draft(draft_id: str, body: DraftIn, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().update_draft(draft_id, body.title, body.goal, body.details.model_dump(exclude_none=True))
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc
+
+
+@app.post("/v1/drafts/{draft_id}/decision")
+async def decide_draft(draft_id: str, body: DraftDecision, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_approver_token(authorization)
+    try:
+        return get_store().decide_draft(draft_id, body.decision, body.note)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc

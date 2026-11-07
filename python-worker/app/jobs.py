@@ -76,6 +76,17 @@ CREATE TABLE IF NOT EXISTS handoffs (
     created_at REAL NOT NULL,
     decided_at REAL
 );
+CREATE TABLE IF NOT EXISTS drafts (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    goal TEXT NOT NULL,
+    details TEXT NOT NULL,
+    status TEXT NOT NULL,
+    note TEXT,
+    job_id TEXT,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS job_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     job_id TEXT NOT NULL REFERENCES jobs(id),
@@ -284,6 +295,75 @@ class JobStore:
         result.update(remaining=max(0, window - used), percent=percent, status=thresholds.status(percent))
         return result
 
+    # ---------------------------------------------------------------- drafts
+
+    def create_draft(self, title: str, goal: str, details: dict[str, Any]) -> dict[str, Any]:
+        """A proposed order. It becomes a job only after an approver says yes."""
+        _validate_draft_steps(details)
+        now = time.time()
+        draft_id = uuid.uuid4().hex
+        with self._tx() as db:
+            db.execute("INSERT INTO drafts VALUES (?,?,?,?, 'draft', NULL, NULL, ?, ?)",
+                       (draft_id, title, goal, canonical_json(details), now, now))
+        return self.get_draft(draft_id)
+
+    def update_draft(self, draft_id: str, title: str, goal: str, details: dict[str, Any]) -> dict[str, Any]:
+        """Rework a draft (e.g. after "Ich habe eine andere Idee"); only while undecided."""
+        _validate_draft_steps(details)
+        with self._tx() as db:
+            row = db.execute("SELECT status FROM drafts WHERE id=?", (draft_id,)).fetchone()
+            if row is None:
+                raise KeyError("Entwurf nicht gefunden")
+            if row["status"] not in ("draft", "revise"):
+                raise ValueError(f"Entwurf ist bereits entschieden ({row['status']})")
+            db.execute("UPDATE drafts SET title=?, goal=?, details=?, status='draft', updated_at=? WHERE id=?",
+                       (title, goal, canonical_json(details), time.time(), draft_id))
+        return self.get_draft(draft_id)
+
+    def decide_draft(self, draft_id: str, decision: str, note: str | None) -> dict[str, Any]:
+        """approve -> creates the job; reject -> closed; revise -> back to the user/ChatGPT with a note."""
+        if decision not in ("approve", "reject", "revise"):
+            raise ValueError("Entscheidung muss approve, reject oder revise sein")
+        if decision == "revise" and not (note and note.strip()):
+            raise ValueError("Für „andere Idee“ bitte die Idee als Notiz angeben")
+        with self._tx() as db:
+            row = db.execute("SELECT * FROM drafts WHERE id=?", (draft_id,)).fetchone()
+            if row is None:
+                raise KeyError("Entwurf nicht gefunden")
+            if row["status"] != "draft":
+                raise ValueError(f"Entwurf ist nicht zur Entscheidung offen ({row['status']})")
+            job_id = None
+            if decision == "approve":
+                details = json.loads(row["details"])
+                steps = details.get("steps") or [{"phase": "Umsetzung", "title": row["title"], "weight": 1}]
+                job_id = uuid.uuid4().hex
+                now = time.time()
+                db.execute("INSERT INTO jobs VALUES (?,?,?,?,?,?)", (job_id, row["title"], row["goal"], None, now, now))
+                for pos, step in enumerate(steps):
+                    db.execute(
+                        "INSERT INTO steps (id, job_id, position, phase, title, weight, status, updated_at) "
+                        "VALUES (?,?,?,?,?,?, 'open', ?)",
+                        (uuid.uuid4().hex, job_id, pos, step["phase"], step["title"], float(step.get("weight", 1)), now),
+                    )
+                self._event(db, job_id, "created", f"aus Entwurf {draft_id} nach Freigabe")
+            status = {"approve": "approved", "reject": "rejected", "revise": "revise"}[decision]
+            db.execute("UPDATE drafts SET status=?, note=?, job_id=?, updated_at=? WHERE id=?",
+                       (status, note, job_id, time.time(), draft_id))
+        return self.get_draft(draft_id)
+
+    def get_draft(self, draft_id: str) -> dict[str, Any]:
+        with self._lock:
+            row = self._db.execute("SELECT * FROM drafts WHERE id=?", (draft_id,)).fetchone()
+            if row is None:
+                raise KeyError("Entwurf nicht gefunden")
+            return {**{k: row[k] for k in row.keys() if k != "details"}, "details": json.loads(row["details"])}
+
+    def list_drafts(self, status: str | None = None) -> list[dict[str, Any]]:
+        with self._lock:
+            ids = [r["id"] for r in self._db.execute(
+                "SELECT id FROM drafts WHERE (? IS NULL OR status=?) ORDER BY created_at", (status, status))]
+        return [self.get_draft(i) for i in ids]
+
     # -------------------------------------------------------------- handoffs
 
     def create_handoff(self, job_id: str, from_model: str, to_model: str,
@@ -483,3 +563,17 @@ def confirmation_prompt(handoff: dict[str, Any]) -> str:
         f"checksum: {handoff['checksum']}\n"
         f"Übergabepaket:\n{canonical_json(handoff['package'])}"
     )
+
+
+def _validate_draft_steps(details: dict[str, Any]) -> None:
+    steps = details.get("steps")
+    if steps is None:
+        return
+    if not isinstance(steps, list) or not steps:
+        raise ValueError("steps muss eine nicht leere Liste sein")
+    for st in steps:
+        if not isinstance(st, dict) or not st.get("phase") or not st.get("title"):
+            raise ValueError("Jeder Schritt braucht phase und title")
+        if float(st.get("weight", 1)) <= 0:
+            raise ValueError("Gewicht muss größer als 0 sein")
+
