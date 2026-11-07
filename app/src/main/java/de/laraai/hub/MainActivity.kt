@@ -6,8 +6,16 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.os.Build
+import android.os.SystemClock
 import androidx.activity.compose.setContent
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,10 +35,153 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-class MainActivity : ComponentActivity() {
+/**
+ * Asks Android for biometric or device-credential authentication. LARA only
+ * receives success or failure; biometric data never leaves the system.
+ */
+internal fun interface AuthRequester {
+    fun request(reason: String, onSuccess: () -> Unit, onFailure: (String) -> Unit)
+}
+
+class MainActivity : FragmentActivity() {
+    private var locked by mutableStateOf(!SessionVault.isUnlocked)
+    private var lockMessage by mutableStateOf<String?>(null)
+    private var authAvailable by mutableStateOf(true)
+    private var backgroundSince: Long? = null
+    private lateinit var biometricPrompt: BiometricPrompt
+    private var pendingSuccess: (() -> Unit)? = null
+    private var pendingFailure: ((String) -> Unit)? = null
+
+    private val authenticators: Int
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+        } else {
+            // BIOMETRIC_STRONG | DEVICE_CREDENTIAL is not supported on Android 9/10.
+            BIOMETRIC_WEAK or DEVICE_CREDENTIAL
+        }
+
+    private val requester = AuthRequester { reason, onSuccess, onFailure ->
+        val availability = BiometricManager.from(this).canAuthenticate(authenticators)
+        if (availability != BiometricManager.BIOMETRIC_SUCCESS) {
+            onFailure("Keine Geräte-Anmeldung verfügbar. Bitte in den Android-Einstellungen eine Displaysperre einrichten.")
+            return@AuthRequester
+        }
+        pendingSuccess = onSuccess
+        pendingFailure = onFailure
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("LARA entsperren")
+            .setSubtitle(reason)
+            .setAllowedAuthenticators(authenticators)
+            .build()
+        biometricPrompt.authenticate(info)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { LaraHubApp() }
+        biometricPrompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val action = pendingSuccess
+                    pendingSuccess = null
+                    pendingFailure = null
+                    action?.invoke()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    val action = pendingFailure
+                    pendingSuccess = null
+                    pendingFailure = null
+                    action?.invoke(errString.toString())
+                }
+                // onAuthenticationFailed (one wrong finger) keeps the prompt open.
+            }
+        )
+        authAvailable = BiometricManager.from(this).canAuthenticate(authenticators) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+        setContent {
+            if (locked) {
+                LockScreen(
+                    message = lockMessage,
+                    authAvailable = authAvailable,
+                    onUnlock = ::unlockSession,
+                    onContinueWithoutKeys = {
+                        lockMessage = null
+                        locked = false
+                    }
+                )
+            } else {
+                LaraHubApp(requester, startupNotice = lockMessage)
+            }
+        }
+    }
+
+    private fun unlockSession() {
+        requester.request(
+            "Fingerabdruck, Gesicht oder Geräte-PIN",
+            onSuccess = {
+                lockMessage = try {
+                    ApiKeyStore.unlock(this).message
+                } catch (e: Exception) {
+                    e.message ?: "Gespeicherte Schlüssel konnten nicht geladen werden."
+                }
+                locked = false
+            },
+            onFailure = { lockMessage = it }
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) backgroundSince = SystemClock.elapsedRealtime()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (LockPolicy.shouldLockOnResume(backgroundSince, SystemClock.elapsedRealtime())) {
+            SessionVault.lock()
+            lockMessage = null
+            locked = true
+        }
+        backgroundSince = null
+        // Ask once when the app becomes visible and is locked; never while a prompt is open.
+        if (locked && authAvailable && pendingSuccess == null) unlockSession()
+    }
+}
+
+@Composable
+private fun LockScreen(
+    message: String?,
+    authAvailable: Boolean,
+    onUnlock: () -> Unit,
+    onContinueWithoutKeys: () -> Unit
+) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp, androidx.compose.ui.Alignment.CenterVertically)
+        ) {
+            Text("LARA ist gesperrt", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Entsperre mit Fingerabdruck, Gesicht oder Geräte-PIN. " +
+                    "LARA speichert keine biometrischen Daten; die Prüfung übernimmt Android.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (authAvailable) {
+                Button(onClick = onUnlock, modifier = Modifier.fillMaxWidth()) { Text("Entsperren") }
+            } else {
+                Text(
+                    "Auf diesem Gerät ist keine Displaysperre eingerichtet. Ohne sie können " +
+                        "API-Schlüssel nicht geschützt gespeichert oder verwendet werden.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedButton(onClick = onContinueWithoutKeys, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ohne API-Schlüssel fortfahren (nur lokales Modell)")
+                }
+            }
+        }
     }
 }
 
@@ -145,7 +296,7 @@ private fun openAutomate(context: Context, flowUri: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LaraHubApp() {
+private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
     var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
@@ -172,7 +323,7 @@ private fun LaraHubApp() {
     var prompt by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Noch nicht verbunden – Verbindung zuerst testen.") }
+    var status by remember { mutableStateOf(startupNotice ?: "Noch nicht verbunden – Verbindung zuerst testen.") }
     var selectedTab by remember { mutableIntStateOf(0) }
     var apiMode by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
     var availableModels by remember { mutableStateOf(emptyList<String>()) }
@@ -491,16 +642,19 @@ private fun LaraHubApp() {
                             Text(apiKeyStatus, style = MaterialTheme.typography.bodySmall)
                             Button(
                                 onClick = {
-                                    try {
-                                        ApiKeyStore.save(context, selectedProvider.id, apiKeyInput)
-                                        if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
-                                            ApiKeyStore.clear(context)
+                                    // Changing credentials is sensitive: always re-authenticate.
+                                    auth.request("API-Schlüssel speichern bestätigen", onSuccess = {
+                                        try {
+                                            ApiKeyStore.save(context, selectedProvider.id, apiKeyInput)
+                                            if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
+                                                ApiKeyStore.clear(context)
+                                            }
+                                            apiKeyInput = ""
+                                            refreshCredentialStatus(selectedProvider)
+                                        } catch (e: Exception) {
+                                            apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
                                         }
-                                        apiKeyInput = ""
-                                        refreshCredentialStatus(selectedProvider)
-                                    } catch (e: Exception) {
-                                        apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
-                                    }
+                                    }, onFailure = { apiKeyStatus = it })
                                 },
                                 enabled = apiKeyInput.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth()
@@ -509,16 +663,18 @@ private fun LaraHubApp() {
                         }
                             TextButton(
                                 onClick = {
-                                    try {
-                                        ApiKeyStore.clear(context, selectedProvider.id)
-                                        if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
-                                            ApiKeyStore.clear(context)
+                                    auth.request("API-Schlüssel entfernen bestätigen", onSuccess = {
+                                        try {
+                                            ApiKeyStore.clear(context, selectedProvider.id)
+                                            if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
+                                                ApiKeyStore.clear(context)
+                                            }
+                                            apiKeyInput = ""
+                                            refreshCredentialStatus(selectedProvider)
+                                        } catch (e: Exception) {
+                                            apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
                                         }
-                                        apiKeyInput = ""
-                                        refreshCredentialStatus(selectedProvider)
-                                    } catch (e: Exception) {
-                                        apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
-                                    }
+                                    }, onFailure = { apiKeyStatus = it })
                                 },
                                 enabled = hasSavedApiKey,
                                 modifier = Modifier.fillMaxWidth()
