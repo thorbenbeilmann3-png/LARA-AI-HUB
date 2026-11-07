@@ -333,3 +333,141 @@ async def request_automation(
     require_automation_token(authorization)
     # No workflows are registered yet. The client-supplied "approved" flag is ignored.
     raise HTTPException(404, "Workflow is not registered; use /v1/automation/tasks")
+
+
+# ---------------------------------------------------------------------------
+# Job memory, progress and token monitoring (docs/AUFTRAGSSPEICHER.md)
+# ---------------------------------------------------------------------------
+from .jobs import JobStore, Thresholds  # noqa: E402
+
+_store: JobStore | None = None
+
+
+def get_store() -> JobStore:
+    global _store
+    if _store is None:
+        _store = JobStore(os.getenv("LARA_DB_PATH", os.path.join(os.path.dirname(__file__), "..", "lara.db")))
+    return _store
+
+
+def reset_store() -> None:
+    """Close the store so the next access reopens it (used by tests and restarts)."""
+    global _store
+    if _store is not None:
+        _store.close()
+    _store = None
+
+
+class StepIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    phase: str = Field(min_length=1, max_length=60)
+    title: str = Field(min_length=1, max_length=200)
+    weight: float = Field(default=1, gt=0, le=1000)
+
+
+class JobIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=200)
+    goal: str = Field(min_length=1, max_length=4000)
+    agent: str | None = Field(default=None, max_length=80)
+    steps: list[StepIn] = Field(min_length=1, max_length=200)
+
+
+class StepUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["open", "in_progress", "done", "failed", "blocked"]
+    result: str | None = Field(default=None, max_length=8000)
+    agent: str | None = Field(default=None, max_length=80)
+
+
+class TokenEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    provider: str = Field(pattern="^[a-z0-9._-]{1,40}$")
+    model: str = Field(min_length=1, max_length=120)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    source: Literal["api", "estimated", "unknown"]
+    job_id: str | None = Field(default=None, pattern="^[a-f0-9]{32}$")
+
+
+class ContextWindow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    model: str = Field(min_length=1, max_length=120)
+    context_window: int = Field(gt=0, le=100_000_000)
+    source: Literal["api", "user"]
+
+
+def _translate(exc: Exception) -> HTTPException:
+    if isinstance(exc, KeyError):
+        return HTTPException(404, str(exc.args[0]) if exc.args else "Nicht gefunden")
+    return HTTPException(400, str(exc))
+
+
+@app.post("/v1/jobs", status_code=201)
+async def create_job(body: JobIn, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().create_job(body.title, body.goal, [s.model_dump() for s in body.steps], body.agent)
+    except ValueError as exc:
+        raise _translate(exc) from exc
+
+
+@app.get("/v1/jobs")
+async def list_jobs(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    return {"jobs": get_store().list_jobs()}
+
+
+@app.get("/v1/jobs/{job_id}")
+async def get_job(job_id: str, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().get_job(job_id)
+    except KeyError as exc:
+        raise _translate(exc) from exc
+
+
+@app.post("/v1/jobs/{job_id}/steps/{step_id}")
+async def update_step(job_id: str, step_id: str, body: StepUpdate,
+                      authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().update_step(job_id, step_id, body.status, body.result, body.agent)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc
+
+
+@app.get("/v1/recovery")
+async def recovery(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    return {"interrupted": get_store().recovery_report()}
+
+
+@app.post("/v1/tokens", status_code=201)
+async def record_tokens(body: TokenEvent, authorization: str | None = Header(default=None)) -> dict[str, str]:
+    require_automation_token(authorization)
+    try:
+        get_store().record_tokens(body.provider, body.model, body.input_tokens, body.output_tokens,
+                                  body.source, body.job_id)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc
+    return {"status": "recorded"}
+
+
+@app.post("/v1/models/context-window")
+async def set_context_window(body: ContextWindow, authorization: str | None = Header(default=None)) -> dict[str, str]:
+    require_automation_token(authorization)
+    get_store().set_context_window(body.model, body.context_window, body.source)
+    return {"status": "saved"}
+
+
+@app.get("/v1/models/context")
+async def context_status(model: str, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    if not 1 <= len(model) <= 120:
+        raise HTTPException(422, "model must be 1-120 characters")
+    try:
+        thresholds = Thresholds.from_env()
+    except ValueError as exc:
+        raise HTTPException(500, str(exc)) from exc
+    return get_store().context_status(model, thresholds)
