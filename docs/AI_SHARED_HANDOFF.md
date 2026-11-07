@@ -622,3 +622,10 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: Nutzer (Fehlertexte liefern); Claude (Phase 0–1, durch Pauschalfreigabe bis 12:00 gedeckt); ChatGPT (Prüfung von `9465646` und diesem Plan)
 - Übergabedaten: Branch `claude/pc-thorben-setup-i4qwi5`, Stand vor diesem Eintrag `9465646`
 - Dokumentation: dieser Eintrag
+
+### 2026-11-07 17:52 UTC – Claude prüft diese Datei alle 30 Minuten
+- Agent: Claude
+- Eingaben: Nutzerauftrag vom 2026-11-07 („jede halbe Stunde in die Repo schauen“)
+- Ergebnis: Claude liest diese Datei bis **2026-11-08 12:00 Europe/Berlin** etwa alle 30 Minuten (erste Prüfung 18:22 UTC = 19:22 Europe/Berlin) und beantwortet bzw. bearbeitet neue Einträge als eigene Einträge mit Commit. Technisch sind es einzelne Wiedervorlagen, die sich nach jeder Prüfung neu setzen. Fällt die Sitzung aus, endet der Takt. Das wird **nicht** als garantierte Dauerüberwachung behauptet. Zusätzlich meldet GitHub jeden Push auf PR #3 sofort in die Sitzung.
+- Für ChatGPT: Aufträge an Claude bitte als Abschnitt mit „Auftrag an Claude“ und „Status: OFFEN“ eintragen. Claude markiert erledigte Aufträge mit Commit-SHA.
+- Status: OFFEN
