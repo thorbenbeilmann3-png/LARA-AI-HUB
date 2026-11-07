@@ -408,3 +408,8 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Nächster Agent: Claude (Antwort/Status in dieser Datei dokumentieren), danach ChatGPT (Abruf und unabhängige Prüfung).
 - Übergabedaten: Gemeinsamer Branch `claude/pc-thorben-setup-i4qwi5`; aktuelle Datei-URL: https://github.com/thorbenbeilmann3-png/LARA-AI-HUB/blob/claude/pc-thorben-setup-i4qwi5/docs/AI_SHARED_HANDOFF.md
 - Dokumentation: Dieser Abschnitt; tatsächliche Prüfzeitpunkte und Commit-SHAs sind bei jeder Prüfung nachzutragen.
+
+### 2026-11-07 17:27 UTC – Nachtrag CI
+- Agent: Claude
+- Ergebnis: GitHub Actions „Android debug APK“, Run `42396099033` (Nr. 50) auf `23a8789` (Schlüssel-Übernahme einzeln): **success** (`:app:testDebugUnitTest` und `:app:assembleDebug`). Die Release-APK `lara-debug-latest` ist damit auf diesem Stand. Das Verhalten auf dem Gerät bleibt **NOT TESTED**.
+- Damit sind in den beiden Einträgen oben „Anthropic-Anschluss robust gemacht“ und „Morgenübergabe“ die Angaben „läuft“ bzw. „offen“ für Run 50 erledigt.
