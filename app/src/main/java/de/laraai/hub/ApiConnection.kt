@@ -327,21 +327,7 @@ internal object ApiConnection {
         provider: AiProvider,
         apiKey: String?
     ) {
-        when (provider) {
-            AiProvider.ANTHROPIC -> {
-                builder.header("Authorization", "Bearer $apiKey")
-                    .header("anthropic-version", "2026-10-21")
-            }
-            AiProvider.GEMINI -> builder.header("x-goog-api-key", apiKey.orEmpty())
-            AiProvider.OPENAI,
-            AiProvider.OPENROUTER,
-            AiProvider.CEREBRAS,
-            AiProvider.OPENCLAW,
-            AiProvider.CUSTOM -> if (!apiKey.isNullOrBlank()) {
-                builder.header("Authorization", "Bearer $apiKey")
-            }
-            AiProvider.OLLAMA -> Unit
-        }
+        providerHeaders(provider, apiKey).forEach { (name, value) -> builder.header(name, value) }
     }
 
     private fun parseIdModels(response: JSONObject): List<String> {
@@ -453,4 +439,22 @@ internal object ApiConnection {
             return responseText
         }
     }
+}
+
+/**
+ * Authentication headers per provider (pure, unit-tested).
+ * - Anthropic: API keys go in `x-api-key` plus `anthropic-version` (official API
+ *   reference; `Authorization: Bearer` is only for OAuth tokens with a beta header).
+ * - Gemini: `x-goog-api-key` (key never in the URL).
+ * - OpenAI-compatible providers: `Authorization: Bearer <key>` when a key exists.
+ */
+internal fun providerHeaders(provider: AiProvider, apiKey: String?): List<Pair<String, String>> = when (provider) {
+    AiProvider.ANTHROPIC -> listOf("x-api-key" to apiKey.orEmpty(), "anthropic-version" to "2026-10-21")
+    AiProvider.GEMINI -> listOf("x-goog-api-key" to apiKey.orEmpty())
+    AiProvider.OPENAI,
+    AiProvider.OPENROUTER,
+    AiProvider.CEREBRAS,
+    AiProvider.OPENCLAW,
+    AiProvider.CUSTOM -> if (!apiKey.isNullOrBlank()) listOf("Authorization" to "Bearer $apiKey") else emptyList()
+    AiProvider.OLLAMA -> emptyList()
 }
