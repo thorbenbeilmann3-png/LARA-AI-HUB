@@ -704,3 +704,15 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Ergänzt: `OLLAMA_BASE_URL` wird jetzt wie `LARA_LOCAL_MODEL_URL` geprüft (nur 127.0.0.1/localhost/::1, nur Schema/Host/Port). Gemeinsame Funktion `gateway.loopback_base_url`. Sicherheit nur verschärft, Verhalten bei korrekter Konfiguration unverändert.
 - Tests: `cd python-worker && pytest -q` lokal **126 passed** (12 neue in `test_security.py`). Auf dem Pixel NICHT getestet.
 - Status: ERLEDIGT (Pixel-Test offen)
+
+## 2026-11-08 – Claude: Alpine/Ollama Phase A und Verbindungstest (`claude/alpine-verbindungstest`)
+- Agent: Claude (Cloud-Sitzung, kein Zugriff auf Pixel oder PC)
+- Zuständigkeit: Phase A aus `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md`, Paket A4 (Verbindungstest)
+- Eingaben: Auftrag @ `a92bfd5` (von `main`); dieser Branch-Stand `512a001`; alle Remote-Branches, PR #1–#3, Actions-Läufe
+- Bearbeitung: Eigener Branch von `claude/pc-thorben-setup-i4qwi5`, kein Merge. Neue Karte unter Tools (`AlpineProbe.kt`, `AlpineProbeCard.kt`), eigener Workflow `android-branch-check.yml`, der `lara-debug-latest` nicht anfasst. Testbuilds haben den Paketnamen `de.laraai.hub.alpinetest`.
+- Ergebnisse: Siehe `docs/ALPINE-OLLAMA-STATUS.md` (Befunde, Testmatrix, Arbeitsplan). Gerätetests: NICHT GETESTET.
+- Status: OFFEN
+- Fehlende Informationen: Gerätebericht vom Pixel; Name der App, die Alpine bereitstellt; Automate-Version. BLOCKIERT: Abschluss Phase A bis zum Gerätebericht, Paket E bis zur Klärung der Alpine-App.
+- Nächster Agent: Nutzer (Gerätetest), danach Claude
+- Übergabedaten: Branch `claude/alpine-verbindungstest`
+- Dokumentation: `docs/ALPINE-OLLAMA-STATUS.md`
