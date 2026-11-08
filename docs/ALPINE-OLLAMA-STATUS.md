@@ -1,6 +1,6 @@
 # LARA: Status zu Alpine, Ollama, Python/Terminal, Automate und MCP
 
-Arbeitsstand zum verbindlichen Auftrag `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md` (Stand des Auftrags: Commit `a92bfd5`).
+Arbeitsstand zum verbindlichen Auftrag `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md` (Stand des Auftrags: Commit `a92bfd5`). Der aktuelle Gesamtstand steht in `PROJECT-STATUS.md`; diese Datei enthält die Einzelheiten zu diesem Paket.
 
 **Kurzfassung:** Phase A ist analysiert, der Verbindungstest ist gebaut. Der entscheidende Nachweis auf dem Pixel 9a steht noch aus: Diese Arbeit läuft in einer Cloud-Umgebung ohne Zugriff auf das Handy. Kein Punkt, der ein echtes Gerät braucht, ist hier als bestanden gemeldet.
 
@@ -62,6 +62,7 @@ Das Paket hat sie bewusst nicht angefasst. Sie gehören in die genannte Phase.
 | 6 | Lokales Ollama hat keine Anmeldung. Ist es erreichbar, kann es jede App auf dem Handy mit INTERNET-Berechtigung nutzen | B / C |
 | 7 | Automate-Autostart, siehe Abschnitt 5 | F |
 | 8 | `versionCode` und `versionName` sind für alle Builds gleich; welcher Build installiert ist, war bisher nicht erkennbar. Der Test-Bericht nennt jetzt den Commit | B |
+| 10 | Schwarzer Text auf dunklem Grund: `LaraTheme` setzt keine Standard-Textfarbe, und `Scaffold(containerColor = Color.Transparent)` übernimmt dadurch Schwarz. Betrifft jeden `Text` ohne eigene Farbe, auch die Statuszeile. Nur die neue Karte ist korrigiert, die App-weite Korrektur braucht deine Zustimmung | vor dem nächsten App-Paket |
 | 9 | CI signiert ohne festen Schlüssel: `lara-debug-latest` hat das Zertifikat `5d3db071…`, der Testbuild `a5f90b91…`. Android lehnt ein Update bei abweichender Signatur ab, dann bleibt nur Deinstallieren, und damit gehen gespeicherte Schlüssel und Chat verloren. Mögliche Ursache für „alte App bleibt installiert“ (ANNAHME). Ein fester Schlüssel als GitHub-Secret braucht deine Freigabe | vor einem Update der echten App |
 
 ## 4. Paket A4: Verbindungstest
