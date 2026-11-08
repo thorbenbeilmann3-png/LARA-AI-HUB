@@ -690,3 +690,11 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Tests: GitHub Actions „Android debug APK“ Run `42428044594` (Nr. 56) auf `0418dfa`: **success** (inkl. `DraftParsingTest`). Auf dem Gerät **NOT TESTED**, dafür muss der Core in Pydroid laufen.
 - Damit sind die Phasen 0–3 des Anbieter- und Auftragsagenten-Plans umgesetzt. **Phase 4** (Ausarbeitung durch ein Modell, Kosten) und **Phase 5** (Übergabe ins Repository, GitHub-Schreibtoken) brauchen eine **ausdrückliche Nutzerfreigabe** und werden nicht ohne diese begonnen.
 - Status: OFFEN (Gerätetests; Entscheidung des Nutzers zu Phase 4/5 und zur Farbpalette)
+
+### 2026-11-08 01:15 UTC – Claude: Gedächtnis-Grundlage (Prio 3 der Morgenübergabe) – `89f8c5e`
+- Agent: Claude
+- Ergebnisse: Gedächtnis im Core mit Kategorien, Quelle, Projekt und Vertrauensstatus. Neues Wissen ersetzt altes, statt es zu überschreiben (alt → VERALTET, verknüpft). Gefilterte Ausschnitte für Agenten, Prüftermine, Secret-Schutz, Export als `LARA_MEMORY/*.md`. Siehe `docs/GEDAECHTNIS.md`.
+- Tests: `cd python-worker && pytest -q` lokal **114 passed** (neu `test_memory.py` 14). CI läuft über „Python control plane tests“.
+- Hinweis zum Architekturvorschlag (`lara_workspace/`): Das Gedächtnis liegt wie die Aufträge im Core. Der Markdown-Export ist die lesbare, versionierbare Form. Das passt zum Vorschlag „Core als einzige Quelle + Datei-Export“.
+- Offen: Import, Gedächtnis-Ansicht in der App, automatisches Übernehmen aus Chats.
+- Status: OFFEN
