@@ -230,3 +230,56 @@ Zusätzlich zu den bisherigen Tests:
 ### Priorität
 
 Nach dem grundlegenden App-seitigen Verbindungsnachweis zuerst Ollama-Chat und danach Python-/Terminal-Zugriff in einem kleinen, vollständig getesteten Paket umsetzen. MCP-Werkzeuge sollen später kontrolliert dieselbe sichere Ausführungsumgebung nutzen können, aber nicht automatisch uneingeschränkten Terminalzugriff erhalten.
+
+
+## 13. Phase F – Automate-Integration direkt im Anschluss
+
+Nach dem erfolgreichen Abschluss und der Prüfung der vorherigen Kernpakete soll als nächstes Funktionspaket **Automate von LlamaLab** in LARA integriert werden. Die bestehende Automate-Integration im Projekt ist zuerst zu untersuchen und möglichst weiterzuverwenden, statt eine zweite parallele Lösung zu bauen.
+
+### Ziel
+
+LARA soll mit der installierten Android-App Automate zusammenarbeiten können, um vom Nutzer freigegebene Automatisierungs-Flows zu starten und deren Status bzw. Ergebnisse nachvollziehbar anzuzeigen.
+
+### Vor der Implementierung prüfen
+
+- Welche Automate-Version auf dem Pixel installiert ist.
+- Welche offiziellen Integrationsmöglichkeiten die installierte Version bereitstellt (z. B. dokumentierte Intents, Deep Links, Content Provider oder andere unterstützte Schnittstellen).
+- Welche Berechtigungen und Nutzerfreigaben erforderlich sind.
+- Welche Teile der bestehenden LARA-Automate-Integration bereits funktionieren.
+- Ob Status und Ergebnisse eines gestarteten Flows zuverlässig an LARA zurückgegeben werden können.
+
+Keine undokumentierten Intent-Aktionen oder erfundenen API-Endpunkte verwenden. Maßgeblich sind die aktuelle offizielle Automate-Dokumentation und Tests auf dem echten Pixel.
+
+### Funktionen in LARA
+
+- Automate-Verfügbarkeit erkennen und Installationsstatus anzeigen.
+- Unterstützte Automate-Flows bzw. Startmöglichkeiten auffindbar machen.
+- Einen vom Nutzer ausgewählten Flow aus LARA starten.
+- Vor dem Start Name und Wirkung des Flows anzeigen; bei sensiblen oder folgenreichen Aktionen eine ausdrückliche Bestätigung verlangen.
+- Startfehler und fehlende Berechtigungen verständlich anzeigen.
+- Soweit die offizielle Schnittstelle es ermöglicht: Ausführungsstatus und Ergebnis zurückmelden.
+- Keine erfolgreiche Ausführung anzeigen, wenn LARA lediglich Automate geöffnet oder einen Start angefordert hat.
+- Eine übersichtliche Automate-Verwaltung in LARA anbieten.
+
+### Sicherheitsregeln
+
+- Keine Automate-Flows stillschweigend oder ohne Nutzerfreigabe starten.
+- Keine Flow-Inhalte, Zugangsdaten oder sensiblen Daten ungeschützt in Logs schreiben.
+- Nur dokumentierte und erforderliche Android-Berechtigungen verwenden.
+- LARA darf keine Automate-Flows verändern oder löschen, ohne dass der Nutzer dies ausdrücklich bestätigt.
+- KI-gestützte Flow-Auswahl darf nur Vorschläge machen; die tatsächliche Ausführung folgt den Freigaberegeln.
+
+### Tests
+
+22. LARA erkennt, ob Automate installiert ist.
+23. LARA zeigt eine unterstützte Startmöglichkeit für einen vorhandenen Test-Flow.
+24. Ein harmloser Test-Flow wird nach Nutzerbestätigung tatsächlich gestartet.
+25. LARA unterscheidet korrekt zwischen „Automate geöffnet“, „Start angefordert“, „läuft“, „erfolgreich beendet“ und „fehlgeschlagen“, soweit diese Zustände über die unterstützte Schnittstelle ermittelbar sind.
+26. Fehlende Berechtigungen, nicht installierte App und ungültige Flow-Referenz werden sauber behandelt.
+27. App-Neustart und Rückkehr aus Automate führen nicht zu falschen Erfolgsanzeigen.
+
+Wenn Automate keine verlässliche Rückmeldung über einen Flow-Abschluss anbietet, muss LARA diese Einschränkung klar anzeigen und darf keinen Abschlussstatus erfinden.
+
+### Reihenfolge
+
+Automate wird **direkt nach** der stabilen Umsetzung und Prüfung von Alpine/Ollama sowie Python/Terminal begonnen. MCP bleibt ein getrenntes Funktionspaket und darf die Automate-Integration nicht ersetzen. Die Reihenfolge und Abhängigkeiten sind im Arbeitsplan transparent zu dokumentieren.
