@@ -136,6 +136,8 @@ class JobStore:
         if path != ":memory:":
             self._db.execute("PRAGMA journal_mode = WAL")
         self._db.executescript(SCHEMA)
+        from .memory import MemoryStore  # same database file, same lock
+        self.memory = MemoryStore(self._db, self._lock)
 
     def close(self) -> None:
         self._db.close()

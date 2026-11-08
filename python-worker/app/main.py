@@ -659,3 +659,81 @@ async def decide_draft(draft_id: str, body: DraftDecision, authorization: str | 
         return get_store().decide_draft(draft_id, body.decision, body.note)
     except (KeyError, ValueError) as exc:
         raise _translate(exc) from exc
+
+
+# ---------------------------------------------------------------------------
+# Memory (docs/GEDAECHTNIS.md)
+# ---------------------------------------------------------------------------
+from .memory import CATEGORIES as MEMORY_CATEGORIES  # noqa: E402
+
+_MemCat = Literal["praeferenz", "projekt", "architektur", "technik", "entscheidung", "aufgabe", "loesung", "fehler", "recherche"]
+_MemTrust = Literal["BESTÄTIGT", "NUTZERANGABE", "ANNAHME", "UNGEPRÜFT", "WIDERSPRUCH"]
+
+
+class MemoryIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: _MemCat
+    content: str = Field(min_length=1, max_length=4000)
+    source: str = Field(min_length=1, max_length=300)
+    trust: _MemTrust
+    project: str | None = Field(default=None, max_length=120)
+    review_at: float | None = None
+
+
+class MemoryReplace(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1, max_length=4000)
+    source: str = Field(min_length=1, max_length=300)
+    trust: _MemTrust
+
+
+class MemoryTrust(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    trust: _MemTrust
+
+
+@app.post("/v1/memory", status_code=201)
+async def memory_add(body: MemoryIn, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().memory.add(body.category, body.content, body.source, body.trust, body.project, body.review_at)
+    except ValueError as exc:
+        raise _translate(exc) from exc
+
+
+@app.get("/v1/memory")
+async def memory_search(category: _MemCat | None = None, project: str | None = None, q: str | None = None,
+                        include_outdated: bool = False, limit: int = 50,
+                        authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    return {"entries": get_store().memory.search(category, project, q, include_outdated, limit)}
+
+
+@app.post("/v1/memory/{entry_id}/replace")
+async def memory_replace(entry_id: str, body: MemoryReplace, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().memory.supersede(entry_id, body.content, body.source, body.trust)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc
+
+
+@app.post("/v1/memory/{entry_id}/trust")
+async def memory_trust(entry_id: str, body: MemoryTrust, authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    try:
+        return get_store().memory.set_trust(entry_id, body.trust)
+    except (KeyError, ValueError) as exc:
+        raise _translate(exc) from exc
+
+
+@app.get("/v1/memory/review")
+async def memory_review(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    return {"due": get_store().memory.due_for_review()}
+
+
+@app.get("/v1/memory/export")
+async def memory_export(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    require_automation_token(authorization)
+    return {"folder": "LARA_MEMORY", "files": get_store().memory.export_markdown()}
