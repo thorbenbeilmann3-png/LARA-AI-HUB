@@ -32,14 +32,23 @@ class GatewayError(Exception):
         self.status = status
 
 
-def local_model_url() -> str:
-    url = os.getenv("LARA_LOCAL_MODEL_URL", "http://127.0.0.1:12434").rstrip("/")
-    parsed = urlparse(url)
+def loopback_base_url(raw: str, name: str) -> str:
+    """Validate a configured model-server base URL: loopback host, no path/query/credentials."""
+    url = raw.strip().rstrip("/")
+    try:
+        parsed = urlparse(url)
+        parsed.port  # raises ValueError for an invalid port
+    except ValueError as exc:
+        raise GatewayError(503, f"{name} ist keine gültige Adresse") from exc
     if parsed.scheme not in ("http", "https") or parsed.hostname not in LOOPBACK_HOSTS:
-        raise GatewayError(503, "LARA_LOCAL_MODEL_URL muss auf dieses Gerät zeigen (127.0.0.1/localhost)")
-    if parsed.path not in ("", "/") or parsed.query or parsed.username:
-        raise GatewayError(503, "LARA_LOCAL_MODEL_URL darf nur Schema, Host und Port enthalten")
+        raise GatewayError(503, f"{name} muss auf dieses Gerät zeigen (127.0.0.1/localhost)")
+    if parsed.path not in ("", "/") or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise GatewayError(503, f"{name} darf nur Schema, Host und Port enthalten")
     return url
+
+
+def local_model_url() -> str:
+    return loopback_base_url(os.getenv("LARA_LOCAL_MODEL_URL", "http://127.0.0.1:12434"), "LARA_LOCAL_MODEL_URL")
 
 
 def _context_length(model_info: Any) -> int | None:

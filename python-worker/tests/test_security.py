@@ -151,3 +151,42 @@ def test_pending_approval_limit(monkeypatch):
     new_approval(); new_approval()
     r = client.post("/v1/approvals", headers=CLIENT, json={"task_id": GUARDED})
     assert r.status_code == 429
+
+
+# --- OLLAMA_BASE_URL must point at this device --------------------------------
+
+import pytest  # noqa: E402
+
+from app import gateway as _gateway  # noqa: E402
+
+
+@pytest.mark.parametrize("url", [
+    "http://10.186.32.74:12434",
+    "http://169.254.169.254",
+    "http://evil.example",
+    "http://127.0.0.1:12434/api",
+    "http://user:pw@127.0.0.1:12434",
+    "http://127.0.0.1:12434?x=1",
+    "ftp://127.0.0.1",
+    "http://127.0.0.1:99999",
+])
+def test_non_loopback_ollama_url_is_refused_before_any_request(monkeypatch, url):
+    monkeypatch.setenv("OLLAMA_BASE_URL", url)
+    r = client.post("/v1/chat", headers=CLIENT, json={"provider": "ollama", "model": "m", "prompt": "x"})
+    assert r.status_code == 503
+    assert "OLLAMA_BASE_URL" in r.json()["detail"]
+    r = client.post("/v1/automation/run", headers=CLIENT, json={"task_id": "ollama.list_models"})
+    assert r.status_code == 503
+    assert "OLLAMA_BASE_URL" in r.json()["detail"]
+
+
+@pytest.mark.parametrize("url", ["http://127.0.0.1:12434", "http://localhost:12434/", "http://[::1]:12434"])
+def test_loopback_ollama_url_is_accepted(url):
+    assert _gateway.loopback_base_url(url, "OLLAMA_BASE_URL") == url.rstrip("/")
+
+
+def test_missing_ollama_url_still_reports_not_configured(monkeypatch):
+    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
+    r = client.post("/v1/chat", headers=CLIENT, json={"provider": "ollama", "model": "m", "prompt": "x"})
+    assert r.status_code == 503
+    assert r.json()["detail"] == "Ollama base URL is not configured"

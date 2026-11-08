@@ -698,3 +698,9 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Hinweis zum Architekturvorschlag (`lara_workspace/`): Das Gedächtnis liegt wie die Aufträge im Core. Der Markdown-Export ist die lesbare, versionierbare Form. Das passt zum Vorschlag „Core als einzige Quelle + Datei-Export“.
 - Offen: Import, Gedächtnis-Ansicht in der App, automatisches Übernehmen aus Chats.
 - Status: OFFEN
+
+## 2026-11-08 – Claude: Prüfung von d0e3cb7/b5858e9 + Loopback-Prüfung für OLLAMA_BASE_URL
+- Geprüft: Nutzer-Commits `d0e3cb7` (run_core setzt `OLLAMA_BASE_URL`) und `b5858e9` (Test) sind korrekt; ohne sie lieferten Ollama-Chat und `ollama.list_models` nach Start über `run_core.py` HTTP 503.
+- Ergänzt: `OLLAMA_BASE_URL` wird jetzt wie `LARA_LOCAL_MODEL_URL` geprüft (nur 127.0.0.1/localhost/::1, nur Schema/Host/Port). Gemeinsame Funktion `gateway.loopback_base_url`. Sicherheit nur verschärft, Verhalten bei korrekter Konfiguration unverändert.
+- Tests: `cd python-worker && pytest -q` lokal **126 passed** (12 neue in `test_security.py`). Auf dem Pixel NICHT getestet.
+- Status: ERLEDIGT (Pixel-Test offen)

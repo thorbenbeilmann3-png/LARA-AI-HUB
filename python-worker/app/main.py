@@ -242,9 +242,7 @@ async def chat(request: ChatRequest, authorization: str | None = Header(default=
             except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
                 raise HTTPException(502, f"Gemini request failed: {type(exc).__name__}") from exc
 
-        base = os.getenv("OLLAMA_BASE_URL")
-        if not base:
-            raise HTTPException(503, "Ollama base URL is not configured")
+        base = _ollama_base_url()
         try:
             response = await client.post(
                 f"{base.rstrip('/')}/api/chat",
@@ -331,9 +329,7 @@ async def run_automation_task(
             },
         }
     if request.task_id == "ollama.list_models":
-        base = os.getenv("OLLAMA_BASE_URL")
-        if not base:
-            raise HTTPException(503, "Ollama base URL is not configured")
+        base = _ollama_base_url()
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=5.0)) as client:
                 response = await client.get(f"{base.rstrip('/')}/api/tags")
@@ -561,6 +557,17 @@ async def confirm_handoff(handoff_id: str, body: HandoffConfirm,
 # AI gateway – first provider: local model server (docs/GATEWAY.md)
 # ---------------------------------------------------------------------------
 from . import gateway  # noqa: E402
+
+
+def _ollama_base_url() -> str:
+    """OLLAMA_BASE_URL is server configuration; it must still point at this device only."""
+    raw = os.getenv("OLLAMA_BASE_URL")
+    if not raw:
+        raise HTTPException(503, "Ollama base URL is not configured")
+    try:
+        return gateway.loopback_base_url(raw, "OLLAMA_BASE_URL")
+    except gateway.GatewayError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
 
 
 class ChatMessage(BaseModel):
