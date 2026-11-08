@@ -266,7 +266,7 @@ private fun saveMessages(context: Context, messages: List<ChatLine>) {
 private fun nowLabel(): String =
     SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.GERMANY).format(Date())
 
-private fun copyText(context: Context, text: String) {
+internal fun copyText(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText("LARA", text))
 }
@@ -603,6 +603,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
 
                     3 -> {
                         Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
+                        AlpineProbeCard(context)
                         Text("KI-Anbieter auswählen", style = MaterialTheme.typography.titleMedium)
                         Box {
                             OutlinedButton(

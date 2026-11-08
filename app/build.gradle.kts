@@ -14,10 +14,25 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+        // Identifies the build in the connection report (commit only, no secrets).
+        buildConfigField("String", "GIT_SHA", "\"${(System.getenv("GITHUB_SHA") ?: "lokal").take(7)}\"")
+        manifestPlaceholders["appLabel"] = "LARA AI HUB"
+    }
+
+    buildTypes {
+        getByName("debug") {
+            // Test builds install next to an existing LARA and cannot replace it or its stored keys.
+            if (System.getenv("LARA_SIDE_BY_SIDE") == "1") {
+                applicationIdSuffix = ".alpinetest"
+                versionNameSuffix = "-alpinetest"
+                manifestPlaceholders["appLabel"] = "LARA Test"
+            }
+        }
     }
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -51,4 +66,5 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // Real org.json on the JVM (Android's stub throws in local unit tests).
     testImplementation("org.json:json:20240303")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
