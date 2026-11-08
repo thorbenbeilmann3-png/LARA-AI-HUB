@@ -6,8 +6,9 @@ Zuletzt aktualisiert: 08.11.2026 von Claude. Vor jeder Arbeit zusätzlich den ak
 ## Kurzfassung
 
 - `main` enthält nur die kleine Starter-App und Dokumentation. Die eigentliche App mit Anbietern, Keystore, App-Sperre und Automate liegt auf Branches, die **nicht** in `main` sind (PR #1 und #3).
-- Für Alpine/Ollama gibt es einen fertig gebauten Verbindungstest. **Auf dem Pixel ist noch nichts nachgewiesen.**
-- Nächster Schritt: Thorben führt den Terminal-Befehl aus Abschnitt 10 aus und kopiert die Ausgabe in den Claude-Chat.
+- Für Alpine/Ollama gibt es einen fertig gebauten, geprüften Verbindungstest. Auf dem Pixel läuft er noch nicht.
+- Die lokale KI auf Port 12434 beantwortet echte Chat-Anfragen, im Alpine-Terminal auf dem Pixel nachgewiesen. **Aus der LARA-App ist noch nichts nachgewiesen.**
+- Nächster Schritt: Thorben prüft in LARA die Adresse `http://127.0.0.1:12434`.
 
 ## 1. Regeln der Zusammenarbeit
 
@@ -70,7 +71,8 @@ Außerdem:
 | Python-Core (`python-worker`) | PASS | Run 42486968526, `512a001`; lokal hier nicht ausgeführt (Pakete fehlen) |
 | Node-Server | PASS, 11 Tests | Run 42486968635, `512a001`; am 08.11. lokal wiederholt: 11 bestanden |
 | Python-Tests auf dem Stand von PR #1 | **FAIL** | Run 42485906156, `3ffc400`, siehe F12 |
-| Lokale KI `192.168.178.21:12434` | Echte Chat-Anfrage **NICHT GETESTET**, von der Cloud aus nicht erreichbar | `docs/LOKALE-KI-PRUEFUNG.md` |
+| Lokale KI auf Port 12434: echter Chat im Alpine-Terminal | PASS unter `192.168.178.21` (2,10 s) und `127.0.0.1` (1,05 s), echte Antwort, Tokenzahlen vorhanden. Von Thorben auf dem Pixel ausgeführt | `docs/LOKALE-KI-PRUEFUNG.md` |
+| Lokale KI auf Port 12434: Chat aus der LARA-App | **NICHT GETESTET** | – |
 | Unabhängige Prüfung Verbindungstest | Zweite Runde bestanden (Urteil „ship“). Nicht geprüft: Android-Laufzeit und Pixel | Abschnitt 8 |
 
 **Nutzerangaben, von den Assistenten nicht selbst geprüft:**
@@ -101,7 +103,7 @@ Außerdem:
 | 08.11. | Prüfen, warum nur ein Modell sichtbar ist | Offen. Die Modellliste kommt vom jeweiligen Server, andere Anbieter brauchen einen API-Schlüssel (ANNAHME, am Gerät prüfen) |
 | 08.11. | Ersteinrichtung Schritt für Schritt | Gilt ab sofort |
 | 08.11. | ChatGPT und Claude arbeiten mit demselben Stand | Diese Datei |
-| 08.11. | Verbindung zur lokalen KI unter `192.168.178.21:12434` prüfen, ohne Code zu ändern | Code geprüft, echter Chat-Test steht aus, siehe `docs/LOKALE-KI-PRUEFUNG.md` |
+| 08.11. | Verbindung zur lokalen KI unter `192.168.178.21:12434` prüfen, ohne Code zu ändern | Code geprüft, Server im Alpine-Terminal bestanden. Test aus LARA steht aus, siehe `docs/LOKALE-KI-PRUEFUNG.md` |
 
 ## 5. Entscheidungen
 
@@ -133,7 +135,7 @@ Zeilenangaben beziehen sich auf den Branch `claude/pc-thorben-setup-i4qwi5` @ `5
 | F9 | Automate-Start nutzt `START_FLOW`; in den geprüften offiziellen Seiten nicht gefunden, nur in Nutzerbeiträgen | `MainActivity.kt:280` | Offen, Phase F |
 | F10 | CI signiert jeden Build mit anderem Zertifikat (vier geprüfte Builds, vier Zertifikate) | Workflows | Offen. Ein fester Schlüssel als GitHub-Secret braucht Freigabe |
 | F11 | App-Text sagt, OpenClaw dürfe HTTP im privaten LAN nutzen; tatsächlich ist es blockiert | `ApiConnection.kt:379`, `MainActivity.kt:746` | Offen |
-| F13 | LARA (PR-Stand), Core und Node-Proxy lassen `http://192.168.178.21:12434` nicht zu. Das ist eine bewusste Sicherheitsregel (`cb7feb0`), bei Bedarf also eine Entscheidung und kein Fehler | `network_security_config.xml`, `ChatHistory.kt:60`, `gateway.py`, `index.js:46` | Wartet auf Klärung, wo der Server läuft |
+| F13 | LARA (PR-Stand), Core und Node-Proxy lassen `http://192.168.178.21:12434` nicht zu. Das ist eine bewusste Sicherheitsregel (`cb7feb0`), bei Bedarf also eine Entscheidung und kein Fehler | `network_security_config.xml`, `ChatHistory.kt:60`, `gateway.py`, `index.js:46` | Nicht nötig, solange `127.0.0.1:12434` verwendet wird |
 | F14 | Core `/v1/chat` mit Anbieter `ollama` nutzt `/api/chat`; der Server-Typ auf Port 12434 antwortete dort früher mit 404 | `python-worker/app/main.py:248` | Offen |
 | F15 | `ApiConnection` folgt einem System-Proxy, der Verbindungstest nicht. Für Loopback sollte auch die Chat-Verbindung direkt laufen | `ApiConnection.kt:56` | Offen, Phase B |
 | F16 | Kleine Testlücken im Verbindungstest, z. B. `{"version":1.5}`. Eine Version mit führendem `v` würde als „nicht Ollama“ gemeldet (nur denkbar, offizielle Builds nennen sie ohne `v`) | `AlpineProbeTest.kt`, `AlpineProbe.kt` | Offen, geringes Risiko, Phase B |
@@ -157,10 +159,11 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 ## 7. Nächste Schritte und Blockaden
 
-1. **Thorben:** Chat-Test aus `docs/LOKALE-KI-PRUEFUNG.md` und Terminal-Befehl aus Abschnitt 10 ausführen, Ausgaben in den Claude-Chat kopieren.
-2. **Thorben:** Testversion „LARA Test“ installieren und Verbindung prüfen. Die APK wurde im Claude-Chat bereitgestellt.
-3. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.
-4. **ChatGPT:** Abschnitt 8 prüfen und das Ergebnis in Abschnitt 9 eintragen.
+1. **Thorben:** In LARA die Verbindung zu `http://127.0.0.1:12434` prüfen und das Ergebnis melden.
+2. **Thorben:** Die vollständige Ausgabe des Terminal-Befehls aus Abschnitt 10 in den Claude-Chat kopieren. Bisher kamen nur die letzten Zeilen an.
+3. **Thorben:** Testversion „LARA Test“ installieren, sobald Claude darum bittet. Die APK wurde im Claude-Chat bereitgestellt.
+4. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.
+5. **ChatGPT:** Abschnitt 8 prüfen und das Ergebnis in Abschnitt 9 eintragen.
 
 | # | Blockade | Fehlt |
 |---|---|---|
@@ -184,7 +187,7 @@ Nur gemeldet, nicht geändert (Regel 8).
   4. Ist die Reihenfolge E1 so gemeint?
 - **Unabhängige Prüfung:** Ein eigener Prüf-Agent fand in der ersten Runde neun Mängel, darunter falsche „erreichbar“-Meldungen und ein mögliches Speichern eingetippter Token. Behoben in `a709d88`. Zweite Runde: acht Befunde behoben, die Testlücken teilweise (siehe F16), Urteil „ship“. Ausgeführt wurden 28 Tests und 34 absichtlich eingebaute Fehler mit den echten Bibliotheken unter Linux. `4c4a194` (nur Textfarbe) wurde gelesen, nicht ausgeführt. Nicht geprüft: Android-Laufzeit und Pixel.
 - **Nicht getestet:** alles auf dem Pixel.
-- **Lokale KI (`192.168.178.21:12434`):** Code geprüft, nichts geändert. Der echte Chat war von der Cloud aus nicht möglich (curl-Fehler 7). Details und Testbefehl in `docs/LOKALE-KI-PRUEFUNG.md`. Bitte prüfen, ob die Tabelle der Schnittstellen stimmt.
+- **Lokale KI (Port 12434):** Code geprüft, nichts geändert. Aus der Cloud war kein Chat möglich (curl-Fehler 7). Thorben hat den Testbefehl auf dem Pixel ausgeführt: HTTP 200 mit echter Antwort unter beiden Adressen, Ausgabe wörtlich in `docs/LOKALE-KI-PRUEFUNG.md` zusammengefasst. Nicht geprüft: Chat aus der LARA-App. Bitte prüfen, ob die Tabelle der Schnittstellen stimmt.
 
 ## 9. Bericht von ChatGPT an Claude
 

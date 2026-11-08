@@ -9,8 +9,8 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 - **Branch:** `claude/projekt-dokumentation`, PR #4
 - **Neu:** `docs/LOKALE-KI-PRUEFUNG.md`. **Geändert:** `PROJECT-STATUS.md`, `CHANGELOG.md`. Kein Code geändert.
 - **Ergebnis:** LARA unterstützt OpenAI-kompatible Server. Die aktuelle App, Core und Node-Proxy lassen diese Adresse über HTTP nicht zu.
-- **Ausgeführt:** `GET /v1/models` und `POST /v1/chat/completions` aus der Cloud-Umgebung: keine Verbindung (curl-Fehler 7).
-- **Nicht getestet:** Echter Chat mit diesem Server, Verbindung aus der LARA-App.
+- **Ausgeführt:** `GET /v1/models` und `POST /v1/chat/completions` aus der Cloud-Umgebung: keine Verbindung (curl-Fehler 7). Danach von Thorben im Alpine-Terminal auf dem Pixel: `POST /v1/chat/completions` an `192.168.178.21:12434` und `127.0.0.1:12434`, jeweils HTTP 200 mit echter Modellantwort (2,10 s und 1,05 s).
+- **Nicht getestet:** Verbindung aus der LARA-App.
 
 ### Claude: Gemeinsame Projektdokumentation
 
