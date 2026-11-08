@@ -8,9 +8,11 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -52,11 +54,14 @@ private val LaraColorScheme = darkColorScheme(
 @Composable
 internal fun LaraTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = LaraColorScheme) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(LaraColors.BackgroundTop, LaraColors.Background)))
-        ) { content() }
+        // The transparent Scaffold inherits this; without it, text falls back to black (F1).
+        CompositionLocalProvider(LocalContentColor provides LaraColors.Text) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(LaraColors.BackgroundTop, LaraColors.Background)))
+            ) { content() }
+        }
     }
 }
 

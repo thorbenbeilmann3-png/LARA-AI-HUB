@@ -61,6 +61,7 @@ internal const val TAB_POSTFACH = 1
 internal const val TAB_ARENA = 2
 internal const val TAB_TOOLS = 3
 internal const val TAB_MONITOR = 4
+internal const val TAB_SETUP = 5
 
 /** One chat line as shown on the home screen (role label + text). */
 internal data class HomeChatLine(val role: String, val text: String, val time: String)
@@ -130,6 +131,18 @@ internal fun HomePage(
         modifier = Modifier.fillMaxWidth(),
         textAlign = androidx.compose.ui.text.style.TextAlign.Center
     )
+
+    val setup = remember { SetupStore.load(context) }
+    GlassCard(Modifier.fillMaxWidth().clickable { onOpenTab(TAB_SETUP) }) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            CardTitle(null, "EINRICHTUNG")
+            Text(
+                "${setup.doneCount} von ${SetupStep.entries.size} Etappen erledigt. Tippen zum Fortsetzen.",
+                color = LaraColors.TextMuted,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
 
     GlassCard(Modifier.fillMaxWidth().clickable { onOpenTab(TAB_CHAT) }, accent = LaraColors.Gold) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

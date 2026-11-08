@@ -50,6 +50,14 @@ internal fun interface AuthRequester {
     fun request(reason: String, onSuccess: () -> Unit, onFailure: (String) -> Unit)
 }
 
+internal fun laraAuthenticators(): Int =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+    } else {
+        // BIOMETRIC_STRONG | DEVICE_CREDENTIAL is not supported on Android 9/10.
+        BIOMETRIC_WEAK or DEVICE_CREDENTIAL
+    }
+
 class MainActivity : FragmentActivity() {
     private var locked by mutableStateOf(!SessionVault.isUnlocked)
     private var lockMessage by mutableStateOf<String?>(null)
@@ -59,13 +67,7 @@ class MainActivity : FragmentActivity() {
     private var pendingSuccess: (() -> Unit)? = null
     private var pendingFailure: ((String) -> Unit)? = null
 
-    private val authenticators: Int
-        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-        } else {
-            // BIOMETRIC_STRONG | DEVICE_CREDENTIAL is not supported on Android 9/10.
-            BIOMETRIC_WEAK or DEVICE_CREDENTIAL
-        }
+    private val authenticators: Int get() = laraAuthenticators()
 
     private val requester = AuthRequester { reason, onSuccess, onFailure ->
         val availability = BiometricManager.from(this).canAuthenticate(authenticators)
@@ -331,7 +333,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
     var busy by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf(startupNotice ?: "Noch nicht verbunden – Verbindung zuerst testen.") }
-    // Content indices: 9 Home, 0 Chat, 2 Arena, 4 Monitor/Aufträge, 1 Postfach, 3 Tools.
+    // Content indices: 9 Home, 0 Chat, 2 Arena, 4 Monitor/Aufträge, 1 Postfach, 3 Tools, 5 Einrichtung.
     var selectedTab by remember { mutableIntStateOf(9) }
     var usageEntries by remember { mutableStateOf(UsageLog.load(context)) }
     var apiMode by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
@@ -424,7 +426,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                         Triple("Chat", Icons.Outlined.ChatBubbleOutline, listOf(0)),
                         Triple("Arena", Icons.Outlined.EmojiEvents, listOf(2)),
                         Triple("Projekte", Icons.Outlined.Folder, listOf(4, 1)),
-                        Triple("Tools", Icons.Outlined.Build, listOf(3))
+                        Triple("Tools", Icons.Outlined.Build, listOf(3, 5))
                     ).forEach { (label, icon, targets) ->
                         NavigationBarItem(
                             selected = selectedTab in targets,
@@ -601,8 +603,28 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
 
                     4 -> MonitorPage(context, auth, usageEntries, model)
 
+                    5 -> SetupWizardPage(
+                        context = context,
+                        auth = auth,
+                        automateFlowSaved = automateFlowUri.isNotBlank(),
+                        onLocalModelSaved = { url, chosen ->
+                            selectedProvider = AiProvider.OLLAMA
+                            endpoint = url
+                            model = chosen
+                            apiMode = ApiMode.OPENAI_COMPATIBLE
+                            apiKeyInput = ""
+                            availableModels = emptyList()
+                            refreshCredentialStatus(AiProvider.OLLAMA)
+                            persistConfig()
+                            status = "Modell aus der Einrichtung gespeichert."
+                        }
+                    )
+
                     3 -> {
                         Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
+                        Button(onClick = { selectedTab = TAB_SETUP }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Einrichtung Schritt für Schritt")
+                        }
                         AlpineProbeCard(context)
                         Text("KI-Anbieter auswählen", style = MaterialTheme.typography.titleMedium)
                         Box {

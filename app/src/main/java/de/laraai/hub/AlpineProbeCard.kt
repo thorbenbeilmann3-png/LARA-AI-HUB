@@ -7,13 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +32,7 @@ private const val KEY_OLLAMA = "alpine_probe_ollama_url"
 private const val KEY_MCP = "alpine_probe_mcp_url"
 private const val KEY_MODEL = "alpine_probe_model"
 
-private fun probeEnvironment(context: Context) = ProbeEnvironment(
+internal fun probeEnvironment(context: Context) = ProbeEnvironment(
     packageName = context.packageName,
     buildSha = BuildConfig.GIT_SHA,
     versionName = BuildConfig.VERSION_NAME,
@@ -89,66 +87,63 @@ internal fun AlpineProbeCard(context: Context) {
     }
 
     GlassCard(Modifier.fillMaxWidth()) {
-        // Without this, text on the dark card falls back to black (see PROJECT-STATUS.md, F1).
-        CompositionLocalProvider(LocalContentColor provides LaraColors.Text) {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Alpine / Ollama – Verbindungstest", style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Alpine / Ollama – Verbindungstest", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Prüft aus dieser App heraus, ob Ollama und der MCP-Endpunkt erreichbar sind. " +
+                    "Es werden keine Zugangsdaten und keine Chat-Nachricht gesendet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = LaraColors.TextMuted
+            )
+            OutlinedTextField(
+                value = ollamaUrl,
+                onValueChange = { ollamaUrl = it },
+                label = { Text("Ollama-Adresse") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = mcpUrl,
+                onValueChange = { mcpUrl = it },
+                label = { Text("MCP-Adresse") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = expectedModel,
+                onValueChange = { expectedModel = it },
+                label = { Text("Erwartetes Modell") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(onClick = { runTest() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
+                Text(if (running) "Prüfe …" else "Verbindung jetzt testen")
+            }
+            report?.let { current ->
                 Text(
-                    "Prüft aus dieser App heraus, ob Ollama und der MCP-Endpunkt erreichbar sind. " +
-                        "Es werden keine Zugangsdaten und keine Chat-Nachricht gesendet.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = LaraColors.TextMuted
+                    current.verdict,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (current.ollamaReached) LaraColors.Ok else LaraColors.Error
                 )
-                OutlinedTextField(
-                    value = ollamaUrl,
-                    onValueChange = { ollamaUrl = it },
-                    label = { Text("Ollama-Adresse") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = mcpUrl,
-                    onValueChange = { mcpUrl = it },
-                    label = { Text("MCP-Adresse") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = expectedModel,
-                    onValueChange = { expectedModel = it },
-                    label = { Text("Erwartetes Modell") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Button(onClick = { runTest() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (running) "Prüfe …" else "Verbindung jetzt testen")
-                }
-                report?.let { current ->
+                current.steps.forEach { step ->
                     Text(
-                        current.verdict,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (current.ollamaReached) LaraColors.Ok else LaraColors.Error
+                        "${step.title}: ${step.result.label}" + (step.httpCode?.let { " (HTTP $it)" } ?: "") + " · ${step.millis} ms",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorFor(step.result)
                     )
-                    current.steps.forEach { step ->
-                        Text(
-                            "${step.title}: ${step.result.label}" + (step.httpCode?.let { " (HTTP $it)" } ?: "") + " · ${step.millis} ms",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorFor(step.result)
-                        )
-                        Text(step.message, style = MaterialTheme.typography.bodySmall)
-                        step.detail?.let {
-                            Text(it, style = MaterialTheme.typography.labelSmall, color = LaraColors.TextMuted)
-                        }
+                    Text(step.message, style = MaterialTheme.typography.bodySmall)
+                    step.detail?.let {
+                        Text(it, style = MaterialTheme.typography.labelSmall, color = LaraColors.TextMuted)
                     }
-                    OutlinedButton(
-                        onClick = {
-                            copyText(context, AlpineProbe.formatReport(current, probeEnvironment(context), reportTime))
-                            copied = true
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (copied) "Bericht kopiert" else "Bericht kopieren")
-                    }
+                }
+                OutlinedButton(
+                    onClick = {
+                        copyText(context, AlpineProbe.formatReport(current, probeEnvironment(context), reportTime))
+                        copied = true
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (copied) "Bericht kopiert" else "Bericht kopieren")
                 }
             }
         }
