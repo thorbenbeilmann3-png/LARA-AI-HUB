@@ -176,3 +176,57 @@ BLOCKIERTE Vorgänge nicht weitergeben. Erst nach Klärung und Dokumentation for
 - Installations-/Update-Anleitung.
 
 **Priorität:** Zuerst die reale Verbindung LARA → Alpine → Ollama zuverlässig herstellen. Danach MCP integrieren. Bestehende LARA-Funktionen und das aktuelle Design erhalten. Keine Funktion als fertig bezeichnen, solange sie nicht nachweislich funktioniert.
+
+
+## 12. Phase E – Python und Alpine-Terminal in LARA integrieren
+
+Python und ein echtes Terminal sind ausdrücklich Teil des Auftrags. Nicht nur eine Python-Code-Eingabebox oder eine simulierte Terminal-Oberfläche bauen.
+
+### Python-Integration
+
+- Die bereits in Alpine installierte Python-Laufzeit (Python 3.14) als bevorzugte Python-Umgebung verwenden.
+- LARA soll Python-Dateien und Skripte über die Alpine-Umgebung ausführen können.
+- Python-Code im LARA-Editor erstellen, bearbeiten, speichern und ausführen.
+- Skriptdateien in einem klar definierten Arbeitsverzeichnis unter `/root/LARA/projects` oder einem geeigneten, persistenten Benutzerprojektverzeichnis ablegen.
+- Ausgabe, Fehlerausgabe, Exit-Code und Laufzeit sichtbar darstellen.
+- Abhängigkeiten kontrolliert über `python -m pip` verwalten, soweit die Alpine-Umgebung dies unterstützt; System-Python nicht unkontrolliert überschreiben.
+- Python-Version und verfügbare Pakete anzeigen.
+- Lange Prozesse abbrechen können und Timeouts/Prozessstatus anzeigen.
+- Keine Ausführung als erfolgreich melden, wenn die App nur den Code gespeichert oder an eine nicht erreichbare Umgebung gesendet hat.
+
+### Terminal-Oberfläche
+
+- Einen echten interaktiven Terminal-Zugang zur Alpine-Shell in LARA bereitstellen, sofern die Alpine-App/PRoot-Umgebung einen sicheren unterstützten Zugriff ermöglicht.
+- Befehle und Argumente korrekt an die Alpine-Shell übergeben; stdout, stderr, Exit-Code und laufende Prozesse zurückliefern.
+- Interaktive Sitzungen unterstützen, soweit technisch möglich; andernfalls Einschränkung klar anzeigen und einen verlässlichen nicht-interaktiven Befehlsmodus bereitstellen.
+- Mehrere Sitzungen, laufende Prozesse, Abbruch, Sitzungsende und Wiederverbindung sauber behandeln.
+- Arbeitsverzeichnis anzeigen und ändern können.
+- Ausgabe lesbar und kopierbar darstellen.
+- Dateien im LARA-Projektverzeichnis auflisten, lesen, erstellen und bearbeiten können, soweit die Verbindung und Berechtigungen dies erlauben.
+
+### Sicherheit und Freigaben
+
+- Terminal-Zugriff darf nicht durch eine versteckte oder ungeschützte Netzwerk-Shell realisiert werden.
+- Keine pauschale Freigabe beliebiger Shell-Kommandos an MCP oder KI.
+- Gefährliche oder irreversible Befehle (z. B. Löschen, Paketentfernung, Rechteänderungen, Netzwerkfreigaben) vor Ausführung deutlich anzeigen und explizit vom Nutzer bestätigen lassen.
+- Tokens und sensible Umgebungsvariablen niemals in Terminal-Logs, Chatverläufe oder Diagnoseberichte übernehmen.
+- Keine Root-Rechte außerhalb der bereits bestehenden Alpine-Umgebung ausweiten.
+- Prüfen, welche IPC-/Bridge-Schnittstelle die Alpine-Android-App tatsächlich bereitstellt. Nicht einfach einen lokalen HTTP-Terminalserver ohne Authentifizierung starten oder an `0.0.0.0` binden.
+- Falls keine sichere App-zu-App-Terminalverbindung möglich ist, den technischen Blocker dokumentieren und eine sichere, vom Nutzer aktivierte Bridge entwerfen. Keine Scheinimplementierung.
+
+### Python-/Terminal-Tests
+
+Zusätzlich zu den bisherigen Tests:
+
+14. LARA kann die Alpine-Python-Version aus der echten App-Verbindung abfragen.
+15. LARA kann ein einfaches Python-Skript in Alpine anlegen und ausführen.
+16. Python stdout, stderr und Exit-Code werden korrekt in LARA angezeigt.
+17. Ein Python-Skript mit absichtlichem Fehler wird korrekt als fehlgeschlagen angezeigt.
+18. Ein laufender Prozess kann kontrolliert beendet werden.
+19. Terminal-Befehl `pwd` und ein harmloser Shell-Befehl liefern echte Alpine-Ergebnisse.
+20. Terminal-Eingaben werden nicht nur lokal simuliert, sondern nachweislich in Alpine ausgeführt.
+21. App-Neustart und Wiederverbindung verhalten sich nachvollziehbar; nicht persistente Terminal-Sitzungen werden als beendet angezeigt.
+
+### Priorität
+
+Nach dem grundlegenden App-seitigen Verbindungsnachweis zuerst Ollama-Chat und danach Python-/Terminal-Zugriff in einem kleinen, vollständig getesteten Paket umsetzen. MCP-Werkzeuge sollen später kontrolliert dieselbe sichere Ausführungsumgebung nutzen können, aber nicht automatisch uneingeschränkten Terminalzugriff erhalten.
