@@ -8,7 +8,7 @@ Zuletzt aktualisiert: 08.11.2026 von Claude. Vor jeder Arbeit zusätzlich den ak
 - `main` enthält nur die kleine Starter-App und Dokumentation. Die eigentliche App mit Anbietern, Keystore, App-Sperre und Automate liegt auf Branches, die **nicht** in `main` sind (PR #1 und #3).
 - Der Verbindungstest läuft auf dem Pixel 9a (Android 17). Ein echter App-Prozess erreicht `127.0.0.1:12434` und bekommt von `127.0.0.1:8765/mcp` die Antwort 401.
 - Die lokale KI auf Port 12434 beantwortet echte Chat-Anfragen, nachgewiesen im Alpine-Terminal auf dem Pixel. **Der Chat aus der LARA-App und das Ollama in Alpine (Port 11434) sind noch nicht getestet.**
-- Nächster Schritt: Thorben sendet in „LARA Test“ eine Chat-Nachricht.
+- Nächster Schritt: Claude baut Textfarbe und Einrichtungsassistenten in die Testversion (Abschnitt 4, E8). Den Chat-Test aus der App übernimmt dort Etappe 4.
 
 ## 1. Regeln der Zusammenarbeit
 
@@ -37,17 +37,19 @@ Außerdem:
 
 **So wird diese Datei gepflegt:** Direkt vor dem Schreiben den neuesten Stand holen, nur die betroffenen Abschnitte ändern, nichts Fremdes löschen. Bei einem Konflikt beide Fassungen erhalten und Thorben fragen.
 
+**Direkt in `main` (E7):** `PROJECT-STATUS.md`, `CHANGELOG.md` und `docs/LOKALE-KI-PRUEFUNG.md` dürfen ChatGPT und Claude ohne Pull Request in `main` aktualisieren. Code, Skripte und Workflows laufen weiter über Branches und Pull Requests.
+
 ## 2. Wo liegt was
 
 | Branch | Stand | Inhalt | Pull Request |
 |---|---|---|---|
-| `main` | `ec254c7` | Starter-App (eine Kotlin-Datei), Auftrag `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md`, `docs/USER-WORKFLOW.md` | – |
+| `main` | ab `abd6b38` | Starter-App (eine Kotlin-Datei), Auftrag `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md`, `docs/USER-WORKFLOW.md`, seit #4 auch diese Datei, `CHANGELOG.md`, `docs/LOKALE-KI-PRUEFUNG.md` und `tools/alpine-info.sh` | – |
 | `feature/android-secure-api-key-storage` | `3ffc400` | Anbieter, Keystore, Automate-Start, OpenClaw, Python-Grundgerüst | #1 nach `main`, Entwurf |
 | `claude/pc-thorben-setup-i4qwi5` | `512a001` | Baut auf #1 auf: App-Sperre, neues Design, Monitor, Core, Gedächtnis, Übergabeprotokoll | #3 nach #1, Entwurf |
 | `feature/automate-python-bridge` | `6cd8c40` | Bridge Automate ↔ Python auf Port 8765 | #2 nach `main`, Entwurf |
 | `safety/pre-arena-20261105` | `1f5b1f1` | Sicherungsstand | – |
 | `claude/alpine-verbindungstest` | `4c4a194` | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
-| `claude/projekt-dokumentation` | dieser Stand | Diese Datei, `CHANGELOG.md`, `tools/alpine-info.sh` | #4 nach `main` |
+| `claude/projekt-dokumentation` | `9049d5a` | In `main` übernommen, nicht weiterführen (Branch bleibt bestehen) | #4, gemergt als `abd6b38` |
 
 **Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor. Aktuell: `LARA-Test-4c4a194.apk`, Commit `4c4a194`, SHA-256 `651b7bfaefdd7df9cf1103fd9993745171334374dd672227aab428558f107de5`, kein Gerätetest.
 
@@ -108,11 +110,13 @@ Außerdem:
 | 08.11. | PC-Software, die sich von allein einstellt | Nicht fertig, zuerst Bestandsaufnahme |
 | 08.11. | Ein cmd-Befehl, der alles installiert und verknüpft | Nur der erste Schritt möglich, danach `EINRICHTEN.bat` geplant. Verknüpfung PC–Handy ist gesperrt, bis die Sicherheitsprüfungen auf dem Gerät bestanden sind |
 | 08.11. | Terminal-Text, dessen Ausgabe Claude alle Infos liefert | Erledigt, Abschnitt 10 |
-| 08.11. | Textfarben prüfen (Text ist schwarz) | Ursache gefunden, siehe F1 |
+| 08.11. | Textfarben prüfen (Text ist schwarz) | Ursache gefunden (F1). Korrektur für die ganze App freigegeben („Ja, korrigieren“), zuerst in der Testversion |
 | 08.11. | Prüfen, warum nur ein Modell sichtbar ist | Offen. Die Modellliste kommt vom jeweiligen Server, andere Anbieter brauchen einen API-Schlüssel (ANNAHME, am Gerät prüfen) |
 | 08.11. | Ersteinrichtung Schritt für Schritt | Gilt ab sofort |
 | 08.11. | ChatGPT und Claude arbeiten mit demselben Stand | Diese Datei |
-| 08.11. | Einrichtungsassistent in LARA: 10 Etappen, Thorben drückt nur auf „Weiter“ und die App erledigt den Schritt | Vorschlag an Thorben gegeben, wartet auf Zustimmung. Automatisch möglich sind nur Prüfungen innerhalb von LARA; was in anderen Apps geschieht, braucht Thorben oder eine noch zu klärende Schnittstelle |
+| 08.11. | Einrichtungsassistent in LARA: 10 Etappen, Thorben drückt nur auf „Weiter“ und die App erledigt den Schritt | Zugestimmt. In Arbeit auf `claude/alpine-verbindungstest`, zuerst nur in der Testversion, Etappen siehe E8. Automatisch möglich sind nur Prüfungen innerhalb von LARA; was in anderen Apps geschieht, braucht Thorben oder eine noch zu klärende Schnittstelle |
+| 08.11. | „Ja mache das die App ( sich mit dir und mit Chatgbt sich verbindet wenn nicht mache es über automate“ | Lesart: LARA soll Claude und ChatGPT selbst anbinden. Geht nur über deren API, siehe E9. Automate ist kein KI-Zugang und kann das nicht ersetzen, es kann nur Abläufe auf dem Handy starten. Eine Verbindung zu diesem Claude-Gespräch ist technisch nicht möglich |
+| 08.11. | „Ja mache das Autoamte und so weiter in Chat gibt und du clode direkt in der App anbinden geht das er selber alles automartich runter laden tut und ein Bericht schickt was ihr noch so braucht für die ein Bindung“ (Lesart: „in Chat gibt“ = „und ChatGPT“) | Bericht: wird gebaut, Versand über das Teilen-Menü von Android. Automatisches Herunterladen nur teilweise: Apps muss Thorben im Store bestätigen, Installationen in Alpine erst nach dem MCP-Paket |
 | 08.11. | Verbindung zur lokalen KI unter `192.168.178.21:12434` prüfen, ohne Code zu ändern | Code geprüft, Server im Alpine-Terminal bestanden. Test aus LARA steht aus, siehe `docs/LOKALE-KI-PRUEFUNG.md` |
 
 ## 5. Entscheidungen
@@ -125,6 +129,9 @@ Außerdem:
 | E4 | `lara-debug-latest` wird von Testbuilds nicht überschrieben | Keine ungeprüften Builds auf dem festen Link | Claude |
 | E5 | Infos vom Handy kommen über einen Terminal-Text | Wunsch von Thorben | Thorben |
 | E6 | Das Terminal-Skript wird über eine feste Commit-Adresse aufgerufen | Es läuft nur genau die geprüfte Fassung | Claude |
+| E7 | `PROJECT-STATUS.md`, `CHANGELOG.md` und `docs/LOKALE-KI-PRUEFUNG.md` werden von ChatGPT und Claude direkt in `main` gepflegt | Freigabe „Ja, und künftig direkt pflegen“. `tools/alpine-info.sh` ist keine Statusdatei und bleibt bei Branch und Pull Request, weil es auf dem Handy ausgeführt wird | Thorben |
+| E8 | Etappen des Assistenten: 1 App und Gerät, 2 lokale KI finden, 3 Modell speichern, 4 Test-Nachricht, 5 Ollama in Alpine starten, 6 Ollama in Alpine prüfen, 7 Automate prüfen, 8 Claude verbinden, 9 ChatGPT verbinden, 10 Bericht senden | Thorben will Automate, Claude und ChatGPT in der App. Das ersetzt die zuerst vorgeschlagenen Etappen 7 bis 10. MCP, Python und Terminal stehen im Bericht als offen | Claude, Thorben informiert |
+| E9 | Claude und ChatGPT werden mit API-Schlüsseln angebunden, gespeichert im Android Keystore. Zur Prüfung wird nur die Modellliste gelesen. Eine Nachricht, die Kosten verursachen kann, nur nach ausdrücklicher Bestätigung | Anthropic erlaubt keine Anmeldung mit dem Claude-Abo in fremden Apps ([Quelle](https://code.claude.com/docs/en/legal-and-compliance)). „Sign in with ChatGPT“ ist laut OpenAI für lokal laufende Open-Source-Tools und persönliche Projekte gedacht ([Quelle](https://developers.openai.com/cookbook/articles/sign-in-with-chatgpt)), Android wird dort nicht erwähnt: als späterer Weg ungeprüft | Claude, Thorben informiert |
 
 ## 6. Offene Fehler und Widersprüche
 
@@ -172,8 +179,8 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 ## 7. Nächste Schritte und Blockaden
 
-1. **Thorben:** In „LARA Test“ im Chat „Hallo“ senden und die Antwort melden.
-2. **Thorben:** In Alpine `ollama serve` starten und in „LARA Test“ den Verbindungstest mit `http://127.0.0.1:11434` wiederholen, danach die Gegenprobe mit beendetem Server.
+1. **Claude:** Textfarbe und Einrichtungsassistent in der Testversion bauen und prüfen (E8).
+2. **Thorben:** Neue Testversion installieren, den Assistenten durchlaufen und den Bericht senden. Etappe 4 ersetzt den Chat-Test, Etappe 6 den Test von Port 11434. Die Gegenprobe mit beendetem Server bleibt von Hand nötig.
 3. **Thorben:** Die vollständige Ausgabe des Terminal-Befehls aus Abschnitt 10 in den Claude-Chat kopieren. Bisher kamen nur die letzten Zeilen an.
 4. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.
 5. **ChatGPT:** Abschnitt 8 prüfen und das Ergebnis in Abschnitt 9 eintragen.
@@ -184,8 +191,9 @@ Nur gemeldet, nicht geändert (Regel 8).
 | B2 | Python und Terminal (Phase E) | Name der App, die Alpine bereitstellt, und deren Schnittstellen |
 | B3 | Automate (Phase F) | Automate-Version, Klärung der offiziell unterstützten Start-Schnittstelle |
 | B4 | MCP (Phase D) | Welche Software den Endpunkt auf Port 8765 bereitstellt |
-| B5 | App-weite Textfarben (F1) | Freigabe von Thorben |
-| B6 | Diese Dateien in `main` | Freigabe von Thorben (PR #4) |
+| B5 | App-weite Textfarben (F1) | Freigabe erteilt, Umsetzung läuft |
+| B7 | Claude und ChatGPT in LARA | API-Schlüssel von Thorben, eingegeben nur in der App, und seine Kostenfreigabe für echte Nachrichten |
+| B8 | Name der Alpine-App für das automatische Öffnen aus Etappe 5 | Angabe von Thorben oder vollständige Ausgabe des Terminal-Skripts |
 
 ## 8. Bericht von Claude an ChatGPT
 
@@ -202,6 +210,8 @@ Nur gemeldet, nicht geändert (Regel 8).
 - **Nicht getestet:** alles auf dem Pixel.
 - **Lokale KI (Port 12434):** Code geprüft, nichts geändert. Aus der Cloud war kein Chat möglich (curl-Fehler 7). Thorben hat den Testbefehl auf dem Pixel ausgeführt: HTTP 200 mit echter Antwort unter beiden Adressen, Ausgabe wörtlich in `docs/LOKALE-KI-PRUEFUNG.md` zusammengefasst. Nicht geprüft: Chat aus der LARA-App. Bitte prüfen, ob die Tabelle der Schnittstellen stimmt.
 - **Erster Gerätebericht (22:27 Uhr):** Die Testversion läuft auf dem Pixel und erreicht die Ports 12434 und 8765 aus einem eigenen App-Prozess. Thorben hatte die Adresse auf Port 12434 geändert, Ollama in Alpine (11434) ist also nicht geprüft. Details in Abschnitt 3.
+
+**08.11.2026, später am Abend (Claude):** PR #4 nach Freigabe in `main` übernommen (`abd6b38`), nur vier neue Dateien, Prüfung davor: `main` unverändert, keine Geheimnisse im Diff. Neu sind E7 bis E9. Bitte prüfen: Ist E9 aus deiner Sicht richtig, und gibt es für ChatGPT einen besseren offiziellen Weg auf Android? Die OpenAI-Hilfeseiten zur Abrechnung ließen sich aus der Cloud-Sitzung nicht öffnen.
 
 ## 9. Bericht von ChatGPT an Claude
 

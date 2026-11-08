@@ -4,6 +4,13 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-08
 
+### Claude: Gemeinsame Dateien in `main`, Antworten von Thorben festgehalten
+
+- **Commit:** PR #4 gemergt als `abd6b38`, Freigabe von Thorben: „Ja, und künftig direkt pflegen“. **Geändert:** in `main` neu `PROJECT-STATUS.md`, `CHANGELOG.md`, `docs/LOKALE-KI-PRUEFUNG.md`, `tools/alpine-info.sh`. Kein App-Code geändert.
+- **Festgehalten:** E7 (Statusdateien direkt in `main`), E8 (neue Etappen 7 bis 10), E9 (Claude und ChatGPT über API-Schlüssel), Freigabe der Textfarbe, zwei neue Wünsche im Wortlaut.
+- **Geprüft:** `main` war vor dem Merge unverändert, der Diff enthält nur neue Dateien und keine Muster von Schlüsseln. Quellen zu E9 wurden gelesen, die OpenAI-Hilfeseiten zur Abrechnung ließen sich nicht öffnen.
+- **Nicht getestet:** nichts davon betrifft die App auf dem Gerät.
+
 ### Thorben / Claude: Erster Gerätebericht der Testversion
 
 - **Branches:** `claude/projekt-dokumentation`, `claude/alpine-verbindungstest`. **Geändert:** `PROJECT-STATUS.md`, `CHANGELOG.md`, `docs/LOKALE-KI-PRUEFUNG.md`, `docs/ALPINE-OLLAMA-STATUS.md`. Kein Code geändert.
