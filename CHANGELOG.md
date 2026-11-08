@@ -4,6 +4,12 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-08
 
+### Thorben / Claude: Erster Gerätebericht der Testversion
+
+- **Branches:** `claude/projekt-dokumentation`, `claude/alpine-verbindungstest`. **Geändert:** `PROJECT-STATUS.md`, `CHANGELOG.md`, `docs/LOKALE-KI-PRUEFUNG.md`, `docs/ALPINE-OLLAMA-STATUS.md`. Kein Code geändert.
+- **Ausgeführt von Thorben auf dem Pixel 9a, Android 17:** Verbindungstest in `LARA Test`, Build `4c4a194`, 22:27 Uhr. Port 12434 antwortet (Version 0.1.32, `/api/tags` leer), `127.0.0.1:8765/mcp` antwortet mit 401.
+- **Nicht getestet:** Chat aus der App, Ollama in Alpine auf Port 11434.
+
 ### Claude: Fehlermeldung bei der APK-Installation festgehalten
 
 - **Branch:** `claude/projekt-dokumentation`. **Geändert:** `PROJECT-STATUS.md` (F17), `CHANGELOG.md`.
