@@ -139,6 +139,7 @@ Zeilenangaben beziehen sich auf den Branch `claude/pc-thorben-setup-i4qwi5` @ `5
 | F14 | Core `/v1/chat` mit Anbieter `ollama` nutzt `/api/chat`; der Server-Typ auf Port 12434 antwortete dort früher mit 404 | `python-worker/app/main.py:248` | Offen |
 | F15 | `ApiConnection` folgt einem System-Proxy, der Verbindungstest nicht. Für Loopback sollte auch die Chat-Verbindung direkt laufen | `ApiConnection.kt:56` | Offen, Phase B |
 | F16 | Kleine Testlücken im Verbindungstest, z. B. `{"version":1.5}`. Eine Version mit führendem `v` würde als „nicht Ollama“ gemeldet (nur denkbar, offizielle Builds nennen sie ohne `v`) | `AlpineProbeTest.kt`, `AlpineProbe.kt` | Offen, geringes Risiko, Phase B |
+| F17 | Beim Installieren einer APK kam auf dem Pixel „App konnte nicht installiert werden“ (Thorben, 08.11., 22:20 Uhr). Welche Datei es war und ob die Meldung mehr sagte, ist nicht bekannt. `LARA-Test-4c4a194.apk` wurde geprüft: Prüfsumme wie im CI-Build, ZIP intakt, Ausrichtung in Ordnung, kein Provider-Konflikt mit LARA. War es eine andere LARA-APK, wäre F10 die naheliegende Ursache | Gerät | Offen, Ursache unbekannt. Vorhandene LARA-App nicht deinstallieren |
 | F12 | Python-Tests rot auf dem Stand von PR #1 (Exit-Code 2). Das Protokoll nennt einen in `d6e8b98` (PR #3) behobenen CI-Importfehler; ob das die Ursache ist, ist nicht bestätigt, das Log war hier nicht lesbar | Run 42485906156 | Offen |
 
 ### Dokumentation passt nicht zum Stand

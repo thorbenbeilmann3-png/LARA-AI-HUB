@@ -4,6 +4,13 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-08
 
+### Claude: Fehlermeldung bei der APK-Installation festgehalten
+
+- **Branch:** `claude/projekt-dokumentation`. **Geändert:** `PROJECT-STATUS.md` (F17), `CHANGELOG.md`.
+- **Gemeldet von Thorben:** „App konnte nicht installiert werden“.
+- **Geprüft:** Struktur von `LARA-Test-4c4a194.apk` im Vergleich mit `lara-debug-latest`: keine Abweichung, die eine Installation verhindern würde.
+- **Nicht geprüft:** Ursache auf dem Gerät.
+
 ### Claude: Prüfung der lokalen KI unter 192.168.178.21:12434
 
 - **Branch:** `claude/projekt-dokumentation`, PR #4
