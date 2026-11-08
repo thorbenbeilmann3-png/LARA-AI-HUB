@@ -50,6 +50,9 @@ def prepare_environment(home: Path) -> dict[str, bool]:
     os.environ["LARA_APPROVER_TOKEN"] = approver
     os.environ.setdefault("LARA_DB_PATH", str(home / "lara.db"))
     os.environ.setdefault("LARA_LOCAL_MODEL_URL", "http://127.0.0.1:12434")
+    # Keep the control-plane Ollama routes on the same configured local endpoint.
+    # main.py uses OLLAMA_BASE_URL, while the shared gateway uses LARA_LOCAL_MODEL_URL.
+    os.environ.setdefault("OLLAMA_BASE_URL", os.environ["LARA_LOCAL_MODEL_URL"])
     return {"automation_token": new_a, "approver_token": new_b}
 
 
