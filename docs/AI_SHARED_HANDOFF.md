@@ -683,3 +683,10 @@ GitHub synchronisiert die Informationen nicht automatisch in Echtzeit zwischen d
 - Tests: `cd python-worker && pytest -q` lokal **100 passed** (neu `test_drafts.py` 11). Die CI läuft automatisch über „Python control plane tests“.
 - Offen: die drei Knöpfe in der App (Phase 3, Oberfläche) sowie Phase 4/5 (Nutzerfreigabe nötig).
 - Status: OFFEN
+
+### 2026-11-08 00:36 UTC – Claude: Phase 3 Oberfläche (Ja / Nein / Andere Idee in der App) – `0418dfa`
+- Agent: Claude
+- Ergebnisse: Karte „Offene Entwürfe – deine Entscheidung“ unter Projekte → Aufträge & Monitor mit „Ja, weitergeben“ / „Nein, ablehnen“ / „Ich habe eine andere Idee“ (mit Textfeld). Jede Entscheidung verlangt vorher die Geräte-Anmeldung (Biometrie/PIN) und wird mit dem separaten Approver-Token gesendet. Der Token ist in der App an die Anmeldung gebunden gespeichert (`lara-core-approver`). Der Client-Token kann nicht entscheiden.
+- Tests: GitHub Actions „Android debug APK“ Run `42428044594` (Nr. 56) auf `0418dfa`: **success** (inkl. `DraftParsingTest`). Auf dem Gerät **NOT TESTED**, dafür muss der Core in Pydroid laufen.
+- Damit sind die Phasen 0–3 des Anbieter- und Auftragsagenten-Plans umgesetzt. **Phase 4** (Ausarbeitung durch ein Modell, Kosten) und **Phase 5** (Übergabe ins Repository, GitHub-Schreibtoken) brauchen eine **ausdrückliche Nutzerfreigabe** und werden nicht ohne diese begonnen.
+- Status: OFFEN (Gerätetests; Entscheidung des Nutzers zu Phase 4/5 und zur Farbpalette)
