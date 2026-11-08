@@ -8,11 +8,14 @@ import run_core
 
 def test_tokens_created_once_with_private_permissions(tmp_path, monkeypatch):
     monkeypatch.delenv("LARA_DB_PATH", raising=False)
+    monkeypatch.delenv("LARA_LOCAL_MODEL_URL", raising=False)
+    monkeypatch.delenv("OLLAMA_BASE_URL", raising=False)
     first = run_core.prepare_environment(tmp_path)
     assert first == {"automation_token": True, "approver_token": True}
     a = os.environ["LARA_AUTOMATION_TOKEN"]
     b = os.environ["LARA_APPROVER_TOKEN"]
     assert a != b and len(a) >= 32
+    assert os.environ["OLLAMA_BASE_URL"] == os.environ["LARA_LOCAL_MODEL_URL"] == "http://127.0.0.1:12434"
     for name in ("automation_token", "approver_token"):
         mode = stat.S_IMODE((tmp_path / name).stat().st_mode)
         assert mode & 0o077 == 0
