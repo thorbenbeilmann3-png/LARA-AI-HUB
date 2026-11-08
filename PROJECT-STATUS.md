@@ -70,6 +70,7 @@ Außerdem:
 | Python-Core (`python-worker`) | PASS | Run 42486968526, `512a001`; lokal hier nicht ausgeführt (Pakete fehlen) |
 | Node-Server | PASS, 11 Tests | Run 42486968635, `512a001`; am 08.11. lokal wiederholt: 11 bestanden |
 | Python-Tests auf dem Stand von PR #1 | **FAIL** | Run 42485906156, `3ffc400`, siehe F12 |
+| Lokale KI `192.168.178.21:12434` | Echte Chat-Anfrage **NICHT GETESTET**, von der Cloud aus nicht erreichbar | `docs/LOKALE-KI-PRUEFUNG.md` |
 | Unabhängige Prüfung Verbindungstest | erste Runde: Fehler gefunden, behoben; zweite Runde läuft | siehe Abschnitt 8 |
 
 **Nutzerangaben, von den Assistenten nicht selbst geprüft:**
@@ -77,6 +78,7 @@ Außerdem:
 - Alpine 3.24.4 (`aarch64`) mit Python 3.14, Node.js 24, Git, curl und Ollama läuft in einer Android-App, Modell `qwen2.5:0.5b`.
 - Innerhalb von Alpine antwortet `GET http://127.0.0.1:11434/api/version` mit HTTP 200.
 - Der MCP-Endpunkt `http://127.0.0.1:8765/mcp` antwortete ohne Token mit 401.
+- Unter `http://192.168.178.21:12434/v1` läuft eine lokale KI mit dem Modell `qwen2.5-0.5b-instruct-q4_k_m`, `/v1/models` liefert die Modellliste.
 - In der neuen LARA-App ist Text schwarz. Als Modell wird nur „Ollama – Qwen 2.5.0“ angezeigt.
 
 **Auf dem Pixel 9a NICHT GETESTET:** Erreichbarkeit von Alpine/Ollama aus LARA, Ollama-Chat, MCP, Python, Terminal, Automate-Flows, App-Sperre und Keystore, Core in Pydroid. Die Tabelle mit allen 27 Prüfungen des Auftrags steht in `docs/ALPINE-OLLAMA-STATUS.md`. Davon ist nur Nr. 1 („App baut“) bestanden.
@@ -99,6 +101,7 @@ Außerdem:
 | 08.11. | Prüfen, warum nur ein Modell sichtbar ist | Offen. Die Modellliste kommt vom jeweiligen Server, andere Anbieter brauchen einen API-Schlüssel (ANNAHME, am Gerät prüfen) |
 | 08.11. | Ersteinrichtung Schritt für Schritt | Gilt ab sofort |
 | 08.11. | ChatGPT und Claude arbeiten mit demselben Stand | Diese Datei |
+| 08.11. | Verbindung zur lokalen KI unter `192.168.178.21:12434` prüfen, ohne Code zu ändern | Code geprüft, echter Chat-Test steht aus, siehe `docs/LOKALE-KI-PRUEFUNG.md` |
 
 ## 5. Entscheidungen
 
@@ -130,6 +133,8 @@ Zeilenangaben beziehen sich auf den Branch `claude/pc-thorben-setup-i4qwi5` @ `5
 | F9 | Automate-Start nutzt `START_FLOW`; in den geprüften offiziellen Seiten nicht gefunden, nur in Nutzerbeiträgen | `MainActivity.kt:280` | Offen, Phase F |
 | F10 | CI signiert jeden Build mit anderem Zertifikat (vier geprüfte Builds, vier Zertifikate) | Workflows | Offen. Ein fester Schlüssel als GitHub-Secret braucht Freigabe |
 | F11 | App-Text sagt, OpenClaw dürfe HTTP im privaten LAN nutzen; tatsächlich ist es blockiert | `ApiConnection.kt:379`, `MainActivity.kt:746` | Offen |
+| F13 | LARA (PR-Stand), Core und Node-Proxy lassen `http://192.168.178.21:12434` nicht zu. Das ist eine bewusste Sicherheitsregel (`cb7feb0`), bei Bedarf also eine Entscheidung und kein Fehler | `network_security_config.xml`, `ChatHistory.kt:60`, `gateway.py`, `index.js:46` | Wartet auf Klärung, wo der Server läuft |
+| F14 | Core `/v1/chat` mit Anbieter `ollama` nutzt `/api/chat`; der Server-Typ auf Port 12434 antwortete dort früher mit 404 | `python-worker/app/main.py:248` | Offen |
 | F12 | Python-Tests rot auf dem Stand von PR #1 (Exit-Code 2). Das Protokoll nennt einen in `d6e8b98` (PR #3) behobenen CI-Importfehler; ob das die Ursache ist, ist nicht bestätigt, das Log war hier nicht lesbar | Run 42485906156 | Offen |
 
 ### Dokumentation passt nicht zum Stand
@@ -150,7 +155,7 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 ## 7. Nächste Schritte und Blockaden
 
-1. **Thorben:** Terminal-Befehl aus Abschnitt 10 ausführen, Ausgabe in den Claude-Chat kopieren.
+1. **Thorben:** Chat-Test aus `docs/LOKALE-KI-PRUEFUNG.md` und Terminal-Befehl aus Abschnitt 10 ausführen, Ausgaben in den Claude-Chat kopieren.
 2. **Thorben:** Testversion „LARA Test“ installieren und Verbindung prüfen, sobald Claude sie freigibt.
 3. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.
 4. **ChatGPT:** Abschnitt 8 prüfen und das Ergebnis in Abschnitt 9 eintragen.
@@ -177,6 +182,7 @@ Nur gemeldet, nicht geändert (Regel 8).
   4. Ist die Reihenfolge E1 so gemeint?
 - **Unabhängige Prüfung:** Ein eigener Prüf-Agent fand in der ersten Runde neun Mängel, darunter falsche „erreichbar“-Meldungen und ein mögliches Speichern eingetippter Token. Behoben in `a709d88`. Die zweite Runde lief beim Schreiben noch; das Ergebnis trägt Claude hier nach.
 - **Nicht getestet:** alles auf dem Pixel.
+- **Lokale KI (`192.168.178.21:12434`):** Code geprüft, nichts geändert. Der echte Chat war von der Cloud aus nicht möglich (curl-Fehler 7). Details und Testbefehl in `docs/LOKALE-KI-PRUEFUNG.md`. Bitte prüfen, ob die Tabelle der Schnittstellen stimmt.
 
 ## 9. Bericht von ChatGPT an Claude
 
