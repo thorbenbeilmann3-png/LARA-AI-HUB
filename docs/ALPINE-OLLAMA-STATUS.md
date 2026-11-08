@@ -2,7 +2,7 @@
 
 Arbeitsstand zum verbindlichen Auftrag `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md` (Stand des Auftrags: Commit `a92bfd5`). Der aktuelle Gesamtstand steht in `PROJECT-STATUS.md`; diese Datei enthält die Einzelheiten zu diesem Paket.
 
-**Kurzfassung:** Phase A ist analysiert, der Verbindungstest ist gebaut. Der entscheidende Nachweis auf dem Pixel 9a steht noch aus: Diese Arbeit läuft in einer Cloud-Umgebung ohne Zugriff auf das Handy. Kein Punkt, der ein echtes Gerät braucht, ist hier als bestanden gemeldet.
+**Kurzfassung:** Phase A ist analysiert, der Verbindungstest läuft auf dem Pixel 9a. Der entscheidende Nachweis für Ollama in Alpine (Port 11434) steht noch aus. Die Geräteergebnisse stammen aus Berichten von Thorben, diese Arbeit selbst läuft in einer Cloud-Umgebung ohne Zugriff auf das Handy.
 
 ## 1. Vorgaben, belegte Fakten, Annahmen
 
@@ -105,9 +105,9 @@ Die Testversion heißt „LARA Test“ (`de.laraai.hub.alpinetest`) und installi
 | Nr. | Prüfung | Status | Hinweis |
 |---|---|---|---|
 | 1 | Bestehende App baut | **PASS** | GitHub Actions: `main` Run 42517359066; PR-Stand Run 42428044594; dieser Branch Run 42519737662 (72 Unit-Tests, 0 Fehler). Kein Nachweis für das Gerät |
-| 2 | App startet auf Android | NICHT GETESTET | Gerät |
-| 3 | LARA-Prozess erreicht Alpine | NICHT GETESTET | Gerät, Paket A4 |
-| 4 | Ollama-Version über LARA | NICHT GETESTET | Gerät, Paket A4 |
+| 2 | App startet auf Android | **PASS** | Testversion `de.laraai.hub.alpinetest`, Build `4c4a194`, Pixel 9a, Android 17, Bericht vom 08.11., 22:27 Uhr |
+| 3 | LARA-Prozess erreicht Alpine | NICHT GETESTET | Starker Hinweis: Der App-Prozess bekam von `127.0.0.1:8765/mcp` HTTP 401. Dass der Dienst in Alpine läuft, ist nicht belegt. Es fehlen Port 11434 und die Gegenprobe |
+| 4 | Ollama-Version über LARA | NICHT GETESTET | Geprüft wurde bisher nur Port 12434 (anderer Server, 0.1.32) |
 | 5 | Modellliste über LARA | NICHT GETESTET | Gerät, Paket A4 |
 | 6 | `qwen2.5:0.5b` erkannt | NICHT GETESTET | Gerät, Paket A4 |
 | 7–8 | Chat an Ollama, echte Antwort | NICHT GETESTET | Gerät, vorhandener Chat oder Phase B |
