@@ -6,14 +6,29 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.os.Build
+import android.os.SystemClock
 import androidx.activity.compose.setContent
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,10 +42,153 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-class MainActivity : ComponentActivity() {
+/**
+ * Asks Android for biometric or device-credential authentication. LARA only
+ * receives success or failure; biometric data never leaves the system.
+ */
+internal fun interface AuthRequester {
+    fun request(reason: String, onSuccess: () -> Unit, onFailure: (String) -> Unit)
+}
+
+class MainActivity : FragmentActivity() {
+    private var locked by mutableStateOf(!SessionVault.isUnlocked)
+    private var lockMessage by mutableStateOf<String?>(null)
+    private var authAvailable by mutableStateOf(true)
+    private var backgroundSince: Long? = null
+    private lateinit var biometricPrompt: BiometricPrompt
+    private var pendingSuccess: (() -> Unit)? = null
+    private var pendingFailure: ((String) -> Unit)? = null
+
+    private val authenticators: Int
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+        } else {
+            // BIOMETRIC_STRONG | DEVICE_CREDENTIAL is not supported on Android 9/10.
+            BIOMETRIC_WEAK or DEVICE_CREDENTIAL
+        }
+
+    private val requester = AuthRequester { reason, onSuccess, onFailure ->
+        val availability = BiometricManager.from(this).canAuthenticate(authenticators)
+        if (availability != BiometricManager.BIOMETRIC_SUCCESS) {
+            onFailure("Keine Geräte-Anmeldung verfügbar. Bitte in den Android-Einstellungen eine Displaysperre einrichten.")
+            return@AuthRequester
+        }
+        pendingSuccess = onSuccess
+        pendingFailure = onFailure
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("LARA entsperren")
+            .setSubtitle(reason)
+            .setAllowedAuthenticators(authenticators)
+            .build()
+        biometricPrompt.authenticate(info)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { LaraHubApp() }
+        biometricPrompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    val action = pendingSuccess
+                    pendingSuccess = null
+                    pendingFailure = null
+                    action?.invoke()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    val action = pendingFailure
+                    pendingSuccess = null
+                    pendingFailure = null
+                    action?.invoke(errString.toString())
+                }
+                // onAuthenticationFailed (one wrong finger) keeps the prompt open.
+            }
+        )
+        authAvailable = BiometricManager.from(this).canAuthenticate(authenticators) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+        setContent { LaraTheme {
+            if (locked) {
+                LockScreen(
+                    message = lockMessage,
+                    authAvailable = authAvailable,
+                    onUnlock = ::unlockSession,
+                    onContinueWithoutKeys = {
+                        lockMessage = null
+                        locked = false
+                    }
+                )
+            } else {
+                LaraHubApp(requester, startupNotice = lockMessage)
+            }
+        } }
+    }
+
+    private fun unlockSession() {
+        requester.request(
+            "Fingerabdruck, Gesicht oder Geräte-PIN",
+            onSuccess = {
+                lockMessage = try {
+                    ApiKeyStore.unlock(this).message
+                } catch (e: Exception) {
+                    e.message ?: "Gespeicherte Schlüssel konnten nicht geladen werden."
+                }
+                locked = false
+            },
+            onFailure = { lockMessage = it }
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) backgroundSince = SystemClock.elapsedRealtime()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (LockPolicy.shouldLockOnResume(backgroundSince, SystemClock.elapsedRealtime())) {
+            SessionVault.lock()
+            lockMessage = null
+            locked = true
+        }
+        backgroundSince = null
+        // Ask once when the app becomes visible and is locked; never while a prompt is open.
+        if (locked && authAvailable && pendingSuccess == null) unlockSession()
+    }
+}
+
+@Composable
+private fun LockScreen(
+    message: String?,
+    authAvailable: Boolean,
+    onUnlock: () -> Unit,
+    onContinueWithoutKeys: () -> Unit
+) {
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp, androidx.compose.ui.Alignment.CenterVertically)
+        ) {
+            Text("LARA ist gesperrt", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Entsperre mit Fingerabdruck, Gesicht oder Geräte-PIN. " +
+                    "LARA speichert keine biometrischen Daten; die Prüfung übernimmt Android.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (authAvailable) {
+                Button(onClick = onUnlock, modifier = Modifier.fillMaxWidth()) { Text("Entsperren") }
+            } else {
+                Text(
+                    "Auf diesem Gerät ist keine Displaysperre eingerichtet. Ohne sie können " +
+                        "API-Schlüssel nicht geschützt gespeichert oder verwendet werden.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedButton(onClick = onContinueWithoutKeys, modifier = Modifier.fillMaxWidth()) {
+                    Text("Ohne API-Schlüssel fortfahren (nur lokales Modell)")
+                }
+            }
+        }
     }
 }
 
@@ -46,7 +204,7 @@ private data class LaraConfig(
 
 private fun loadConfig(context: Context): LaraConfig {
     val prefs = context.getSharedPreferences("lara_hub_config", Context.MODE_PRIVATE)
-    val defaultEndpoint = "http://10.179.130.230:12434/"
+    val defaultEndpoint = "http://127.0.0.1:12434/"
     val endpoint = prefs.getString("endpoint", defaultEndpoint) ?: defaultEndpoint
     val inferredProvider = if (
         endpoint.startsWith("https://", ignoreCase = true) && ApiKeyStore.hasSaved(context)
@@ -145,7 +303,7 @@ private fun openAutomate(context: Context, flowUri: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LaraHubApp() {
+private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
     var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
@@ -172,8 +330,10 @@ private fun LaraHubApp() {
     var prompt by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Noch nicht verbunden – Verbindung zuerst testen.") }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var status by remember { mutableStateOf(startupNotice ?: "Noch nicht verbunden – Verbindung zuerst testen.") }
+    // Content indices: 9 Home, 0 Chat, 2 Arena, 4 Monitor/Aufträge, 1 Postfach, 3 Tools.
+    var selectedTab by remember { mutableIntStateOf(9) }
+    var usageEntries by remember { mutableStateOf(UsageLog.load(context)) }
     var apiMode by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
     var availableModels by remember { mutableStateOf(emptyList<String>()) }
     var showModelPicker by remember { mutableStateOf(false) }
@@ -218,7 +378,7 @@ private fun LaraHubApp() {
                 apiMode = result.mode
                 availableModels = result.models
                 if (model.isBlank() || (result.models.isNotEmpty() && model !in result.models)) {
-                    model = result.models.firstOrNull().orEmpty()
+                    model = ModelChoice.pickDefault(result.models)
                 }
                 persistConfig()
                 val apiLabel = if (selectedProvider == AiProvider.OLLAMA) {
@@ -227,7 +387,7 @@ private fun LaraHubApp() {
                 val itemLabel = if (selectedProvider == AiProvider.OPENCLAW) "Agent(en)" else "Modell(e)"
                 status = "Verbunden: $apiLabel · ${result.models.size} $itemLabel gefunden"
             } catch (e: Exception) {
-                status = "Verbindung fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
+                status = "Verbindung fehlgeschlagen – " + ProviderErrors.describe(selectedProvider.label, e)
             } finally {
                 checking = false
             }
@@ -240,40 +400,76 @@ private fun LaraHubApp() {
         }
     }
 
-    MaterialTheme {
+    run {
         Scaffold(
+            containerColor = Color.Transparent,
             topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text("LARA AI HUB")
-                            Text("Lokale und externe KI-Zentrale", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                )
+                if (selectedTab != 9) {
+                    TopAppBar(
+                        title = {
+                            Column {
+                                Text("LARA AI HUB", color = LaraColors.Gold)
+                                Text("Lokale und externe KI-Zentrale", style = MaterialTheme.typography.labelSmall, color = LaraColors.TextMuted)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                    )
+                }
             },
             bottomBar = {
-                NavigationBar {
-                    listOf("Chat", "Postfach", "ARENA", "PC").forEachIndexed { index, label ->
+                NavigationBar(containerColor = Color(0xF20B1330)) {
+                    // label, icon, content index, which content indices count as "selected"
+                    listOf(
+                        Triple("Home", Icons.Outlined.Home, listOf(9)),
+                        Triple("Chat", Icons.Outlined.ChatBubbleOutline, listOf(0)),
+                        Triple("Arena", Icons.Outlined.EmojiEvents, listOf(2)),
+                        Triple("Projekte", Icons.Outlined.Folder, listOf(4, 1)),
+                        Triple("Tools", Icons.Outlined.Build, listOf(3))
+                    ).forEach { (label, icon, targets) ->
                         NavigationBarItem(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            icon = { Text(listOf("✦", "✉", "⚔", "⌘")[index]) },
-                            label = { Text(label) }
+                            selected = selectedTab in targets,
+                            onClick = { selectedTab = targets.first() },
+                            icon = { Icon(icon, contentDescription = label) },
+                            label = { Text(label) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = LaraColors.Gold,
+                                selectedTextColor = LaraColors.Gold,
+                                indicatorColor = LaraColors.Gold.copy(alpha = 0.15f),
+                                unselectedIconColor = LaraColors.Cyan,
+                                unselectedTextColor = LaraColors.TextMuted
+                            )
                         )
                     }
                 }
             }
         ) { padding ->
-            val pageModifier = if (selectedTab == 3) Modifier.verticalScroll(rememberScrollState()) else Modifier
+            val pageModifier = if (selectedTab >= 3) Modifier.verticalScroll(rememberScrollState()) else Modifier
             Column(
                 Modifier.fillMaxSize().padding(padding).padding(16.dp).then(pageModifier),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (selectedTab == 4 || selectedTab == 1) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = selectedTab == 4, onClick = { selectedTab = 4 }, label = { Text("Aufträge & Monitor") })
+                        FilterChip(selected = selectedTab == 1, onClick = { selectedTab = 1 }, label = { Text("Postfach") })
+                    }
+                }
                 when (selectedTab) {
+                    9 -> HomePage(
+                        context = context,
+                        providerLabel = selectedProvider.label,
+                        model = model,
+                        connectionStatus = status,
+                        chat = lines.map { HomeChatLine(it.role, it.text, it.time) },
+                        usage = usageEntries,
+                        onOpenTab = { target -> selectedTab = target },
+                        onQuickPrompt = { text -> prompt = text; selectedTab = 0 },
+                        onTestConnection = { selectedTab = 0; checkConnection() }
+                    )
+
                     0 -> {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("KI-Chat", style = MaterialTheme.typography.titleLarge)
+                            Text("KI-Chat", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                             TextButton(onClick = { checkConnection() }, enabled = !checking && !busy) {
                                 Text(if (checking) "Prüfe …" else "Verbindung testen")
                             }
@@ -284,8 +480,13 @@ private fun LaraHubApp() {
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(lines.takeLast(80)) { entry ->
-                                Card {
-                                    Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                val mine = entry.role == "Du"
+                                GlassCard(
+                                    Modifier.fillMaxWidth().padding(start = if (mine) 32.dp else 0.dp, end = if (mine) 0.dp else 32.dp),
+                                    accent = if (mine) LaraColors.Gold else LaraColors.Cyan,
+                                    corner = 16.dp
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                             Text("${entry.role} · ${entry.time}", style = MaterialTheme.typography.labelSmall)
                                             TextButton(onClick = { copyText(context, entry.text) }) { Text("Kopieren") }
@@ -307,6 +508,10 @@ private fun LaraHubApp() {
                                 val question = prompt.trim()
                                 if (question.isNotEmpty() && !busy) {
                                     prompt = ""
+                                    // Earlier turns of this chat, sent as context (bounded in ChatHistory).
+                                    val history = lines.mapNotNull { line ->
+                                        ChatHistory.fromStoredRole(line.role)?.let { ChatTurn(it, line.text) }
+                                    }
                                     addMessage("Du", question)
                                     busy = true
                                     status = "Verbinde und sende Anfrage …"
@@ -315,7 +520,7 @@ private fun LaraHubApp() {
                                             val discovery = ApiConnection.discover(context, selectedProvider, endpoint)
                                             apiMode = discovery.mode
                                             if (availableModels != discovery.models) availableModels = discovery.models
-                                            val selectedModel = model.ifBlank { discovery.models.firstOrNull().orEmpty() }
+                                            val selectedModel = model.ifBlank { ModelChoice.pickDefault(discovery.models) }
                                             if (selectedModel.isBlank()) error("Der Server meldet keine Modelle. Bitte Modellnamen prüfen.")
                                             if (model.isBlank()) model = selectedModel
                                             val answer = ApiConnection.chat(
@@ -325,14 +530,19 @@ private fun LaraHubApp() {
                                                 selectedModel,
                                                 question,
                                                 discovery.mode,
-                                                if (selectedProvider == AiProvider.OPENCLAW) openClawConversationId else null
+                                                if (selectedProvider == AiProvider.OPENCLAW) openClawConversationId else null,
+                                                history
                                             )
                                             persistConfig()
                                             addMessage("LARA / $selectedModel", answer)
+                                            ApiConnection.lastUsage?.let {
+                                                UsageLog.add(context, it)
+                                                usageEntries = UsageLog.load(context)
+                                            }
                                             val apiLabel = if (selectedProvider == AiProvider.OLLAMA) "Ollama" else selectedProvider.label
                                             status = "Antwort erhalten · $apiLabel"
                                         } catch (e: Exception) {
-                                            status = "Fehler: ${e.message ?: "Verbindung fehlgeschlagen"}"
+                                            status = "Fehler – " + ProviderErrors.describe(selectedProvider.label, e)
                                         } finally {
                                             busy = false
                                         }
@@ -348,7 +558,7 @@ private fun LaraHubApp() {
 
                     1 -> {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("KI-Postfach", style = MaterialTheme.typography.titleLarge)
+                            Text("KI-Postfach", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                             TextButton(onClick = { lines.clear(); saveMessages(context, lines) }) { Text("Leeren") }
                         }
                         Text("Ein- und Ausgang · lokal auf diesem Handy gespeichert")
@@ -357,7 +567,7 @@ private fun LaraHubApp() {
                         } else {
                             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(lines.asReversed()) { entry ->
-                                    Card {
+                                    GlassCard(Modifier.fillMaxWidth()) {
                                         Column(Modifier.fillMaxWidth().padding(12.dp)) {
                                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                                 Text(entry.role, style = MaterialTheme.typography.labelLarge)
@@ -374,9 +584,9 @@ private fun LaraHubApp() {
                     }
 
                     2 -> {
-                        Text("ARENA", style = MaterialTheme.typography.titleLarge)
+                        Text("ARENA", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                         Text("KI-Wettkampf · bis zu 30 Teilnehmerplätze")
-                        Card {
+                        GlassCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("Wettkampfablauf", style = MaterialTheme.typography.titleMedium)
                                 Text("1. Aufgabe festlegen")
@@ -389,8 +599,10 @@ private fun LaraHubApp() {
                         Text("Status: Die Arena-Oberfläche ist vorbereitet. Modellverwaltung, Mehrfachaufrufe und Wertung sind noch nicht implementiert.")
                     }
 
+                    4 -> MonitorPage(context, auth, usageEntries, model)
+
                     3 -> {
-                        Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge)
+                        Text("Verbindungen & Geräte", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
                         Text("KI-Anbieter auswählen", style = MaterialTheme.typography.titleMedium)
                         Box {
                             OutlinedButton(
@@ -466,7 +678,7 @@ private fun LaraHubApp() {
                             }
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
-                        Divider()
+                        HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
                         if (selectedProvider.requiresApiKey || selectedProvider == AiProvider.CUSTOM) {
                             Text(
                                 if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token · OpenClaw"
@@ -486,16 +698,19 @@ private fun LaraHubApp() {
                             Text(apiKeyStatus, style = MaterialTheme.typography.bodySmall)
                             Button(
                                 onClick = {
-                                    try {
-                                        ApiKeyStore.save(context, selectedProvider.id, apiKeyInput)
-                                        if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
-                                            ApiKeyStore.clear(context)
+                                    // Changing credentials is sensitive: always re-authenticate.
+                                    auth.request("API-Schlüssel speichern bestätigen", onSuccess = {
+                                        try {
+                                            ApiKeyStore.save(context, selectedProvider.id, apiKeyInput)
+                                            if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
+                                                ApiKeyStore.clear(context)
+                                            }
+                                            apiKeyInput = ""
+                                            refreshCredentialStatus(selectedProvider)
+                                        } catch (e: Exception) {
+                                            apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
                                         }
-                                        apiKeyInput = ""
-                                        refreshCredentialStatus(selectedProvider)
-                                    } catch (e: Exception) {
-                                        apiKeyStatus = e.message ?: "Speichern fehlgeschlagen."
-                                    }
+                                    }, onFailure = { apiKeyStatus = it })
                                 },
                                 enabled = apiKeyInput.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth()
@@ -504,16 +719,18 @@ private fun LaraHubApp() {
                         }
                             TextButton(
                                 onClick = {
-                                    try {
-                                        ApiKeyStore.clear(context, selectedProvider.id)
-                                        if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
-                                            ApiKeyStore.clear(context)
+                                    auth.request("API-Schlüssel entfernen bestätigen", onSuccess = {
+                                        try {
+                                            ApiKeyStore.clear(context, selectedProvider.id)
+                                            if (selectedProvider == AiProvider.CUSTOM && ApiKeyStore.hasSaved(context)) {
+                                                ApiKeyStore.clear(context)
+                                            }
+                                            apiKeyInput = ""
+                                            refreshCredentialStatus(selectedProvider)
+                                        } catch (e: Exception) {
+                                            apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
                                         }
-                                        apiKeyInput = ""
-                                        refreshCredentialStatus(selectedProvider)
-                                    } catch (e: Exception) {
-                                        apiKeyStatus = e.message ?: "Entfernen fehlgeschlagen."
-                                    }
+                                    }, onFailure = { apiKeyStatus = it })
                                 },
                                 enabled = hasSavedApiKey,
                                 modifier = Modifier.fillMaxWidth()
@@ -543,7 +760,7 @@ private fun LaraHubApp() {
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
-                        Divider()
+                        HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
                         Text("Automate von LlamaLab", style = MaterialTheme.typography.titleMedium)
                         OutlinedTextField(
                             value = automateFlowUri,

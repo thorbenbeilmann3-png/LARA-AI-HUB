@@ -18,7 +18,7 @@ internal enum class AiProvider(
     val defaultEndpoint: String,
     val requiresApiKey: Boolean
 ) {
-    OLLAMA("ollama", "Ollama · lokal", "http://10.179.130.230:12434/", false),
+    OLLAMA("ollama", "Ollama · lokal", "http://127.0.0.1:12434/", false),
     OPENAI("openai", "OpenAI", "https://api.openai.com/v1", true),
     ANTHROPIC("anthropic", "Anthropic · Claude", "https://api.anthropic.com", true),
     GEMINI("gemini", "Google · Gemini", "https://generativelanguage.googleapis.com/v1beta", true),
@@ -48,6 +48,11 @@ internal data class ApiDiscovery(
  * and are never written to logs or returned to the UI.
  */
 internal object ApiConnection {
+    /** Token counts of the most recent chat response (null before the first request). */
+    @Volatile
+    var lastUsage: TokenUsage? = null
+        private set
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -120,37 +125,41 @@ internal object ApiConnection {
         model: String,
         prompt: String,
         mode: ApiMode,
-        conversationId: String? = null
+        conversationId: String? = null,
+        history: List<ChatTurn> = emptyList()
     ): String = withContext(Dispatchers.IO) {
         require(model.isNotBlank()) { "Bitte zuerst ein Modell auswählen." }
         require(prompt.isNotBlank()) { "Die Nachricht darf nicht leer sein." }
 
         if (provider == AiProvider.OLLAMA) {
-            return@withContext chatOllama(endpoint, model, prompt, mode, null)
+            return@withContext chatOllama(endpoint, model, prompt, mode, null, history)
         }
 
         val root = rootUrl(endpoint, provider)
         val apiKey = loadProviderApiKey(context, provider, root)
         val request = when (provider) {
-            AiProvider.ANTHROPIC -> anthropicChatRequest(root, apiKey, model, prompt)
-            AiProvider.GEMINI -> geminiChatRequest(root, apiKey, model, prompt)
+            AiProvider.ANTHROPIC -> anthropicChatRequest(root, apiKey, model, prompt, history)
+            AiProvider.GEMINI -> geminiChatRequest(root, apiKey, model, prompt, history)
             AiProvider.OPENAI,
             AiProvider.OPENROUTER,
             AiProvider.CEREBRAS,
             AiProvider.OPENCLAW,
             AiProvider.CUSTOM -> openAiCompatibleChatRequest(
-                root, apiKey, model, prompt, provider, conversationId
+                root, apiKey, model, prompt, provider, conversationId, history
             )
             AiProvider.OLLAMA -> error("Interner Ollama-Routingfehler.")
         }
         val response = JSONObject(execute(request))
+        lastUsage = UsageParser.parse(
+            when (provider) {
+                AiProvider.ANTHROPIC -> "anthropic"
+                AiProvider.GEMINI -> "gemini"
+                else -> "openai"
+            },
+            provider.id, model, response, System.currentTimeMillis()
+        )
         when (provider) {
-            AiProvider.ANTHROPIC -> {
-                val content = response.optJSONArray("content") ?: JSONArray()
-                (0 until content.length()).mapNotNull { index ->
-                    content.optJSONObject(index)?.optString("text")?.takeIf { it.isNotBlank() }
-                }.joinToString("\n").ifBlank { "Leere Antwort" }
-            }
+            AiProvider.ANTHROPIC -> AnthropicResponse.toChatText(response)
             AiProvider.GEMINI -> {
                 val candidates = response.optJSONArray("candidates") ?: JSONArray()
                 val parts = candidates.optJSONObject(0)
@@ -206,12 +215,13 @@ internal object ApiConnection {
         model: String,
         prompt: String,
         mode: ApiMode,
-        apiKey: String?
+        apiKey: String?,
+        history: List<ChatTurn> = emptyList()
     ): String {
         val root = rootUrl(endpoint, AiProvider.OLLAMA)
         val payload = JSONObject()
             .put("model", model)
-            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+            .put("messages", roleContentMessages(ChatHistory.build(history, prompt)))
             .put("stream", false)
         val url = when (mode) {
             ApiMode.OPENAI_COMPATIBLE -> "$root/v1/chat/completions"
@@ -223,6 +233,10 @@ internal object ApiConnection {
             .apply { if (!apiKey.isNullOrBlank()) header("Authorization", "Bearer $apiKey") }
             .build()
         val json = JSONObject(execute(request))
+        lastUsage = UsageParser.parse(
+            if (mode == ApiMode.OPENAI_COMPATIBLE) "openai" else "ollama",
+            AiProvider.OLLAMA.id, model, json, System.currentTimeMillis()
+        )
         return when (mode) {
             ApiMode.OPENAI_COMPATIBLE -> json.getJSONArray("choices")
                 .getJSONObject(0).getJSONObject("message").optString("content", "Leere Antwort")
@@ -236,11 +250,15 @@ internal object ApiConnection {
         model: String,
         prompt: String,
         provider: AiProvider,
-        conversationId: String?
+        conversationId: String?,
+        history: List<ChatTurn> = emptyList()
     ): Request {
+        // OpenClaw keeps the conversation server-side (user = conv:<id>); sending the
+        // local history as well would duplicate it.
+        val turns = if (provider == AiProvider.OPENCLAW) emptyList() else history
         val payload = JSONObject()
             .put("model", model)
-            .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", prompt)))
+            .put("messages", roleContentMessages(ChatHistory.build(turns, prompt)))
             .put("stream", false)
         if (provider == AiProvider.OPENCLAW && !conversationId.isNullOrBlank()) {
             payload.put("user", "conv:$conversationId")
@@ -256,14 +274,13 @@ internal object ApiConnection {
         root: String,
         apiKey: String?,
         model: String,
-        prompt: String
+        prompt: String,
+        history: List<ChatTurn> = emptyList()
     ): Request {
         val payload = JSONObject()
             .put("model", model)
             .put("max_tokens", 1024)
-            .put("messages", JSONArray().put(
-                JSONObject().put("role", "user").put("content", prompt)
-            ))
+            .put("messages", roleContentMessages(ChatHistory.build(history, prompt)))
         return Request.Builder()
             .url("$root/v1/messages")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
@@ -275,24 +292,31 @@ internal object ApiConnection {
         root: String,
         apiKey: String?,
         model: String,
-        prompt: String
+        prompt: String,
+        history: List<ChatTurn> = emptyList()
     ): Request {
         val safeModel = URLEncoder.encode(model.removePrefix("models/"), "UTF-8")
             .replace("+", "%20")
-        val payload = JSONObject().put(
-            "contents",
-            JSONArray().put(
-                JSONObject().put(
-                    "parts",
-                    JSONArray().put(JSONObject().put("text", prompt))
-                )
+        val contents = JSONArray()
+        ChatHistory.build(history, prompt).forEach { turn ->
+            contents.put(
+                JSONObject()
+                    .put("role", if (turn.role == "assistant") "model" else "user")
+                    .put("parts", JSONArray().put(JSONObject().put("text", turn.content)))
             )
-        )
+        }
+        val payload = JSONObject().put("contents", contents)
         return Request.Builder()
             .url("$root/v1beta/models/$safeModel:generateContent")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .apply { applyProviderHeaders(this, AiProvider.GEMINI, apiKey) }
             .build()
+    }
+
+    private fun roleContentMessages(turns: List<ChatTurn>): JSONArray {
+        val messages = JSONArray()
+        turns.forEach { messages.put(JSONObject().put("role", it.role).put("content", it.content)) }
+        return messages
     }
 
     private fun modelListUrl(root: String, provider: AiProvider): String =
@@ -303,21 +327,7 @@ internal object ApiConnection {
         provider: AiProvider,
         apiKey: String?
     ) {
-        when (provider) {
-            AiProvider.ANTHROPIC -> {
-                builder.header("Authorization", "Bearer $apiKey")
-                    .header("anthropic-version", "2026-10-21")
-            }
-            AiProvider.GEMINI -> builder.header("x-goog-api-key", apiKey.orEmpty())
-            AiProvider.OPENAI,
-            AiProvider.OPENROUTER,
-            AiProvider.CEREBRAS,
-            AiProvider.OPENCLAW,
-            AiProvider.CUSTOM -> if (!apiKey.isNullOrBlank()) {
-                builder.header("Authorization", "Bearer $apiKey")
-            }
-            AiProvider.OLLAMA -> Unit
-        }
+        providerHeaders(provider, apiKey).forEach { (name, value) -> builder.header(name, value) }
     }
 
     private fun parseIdModels(response: JSONObject): List<String> {
@@ -385,11 +395,26 @@ internal object ApiConnection {
         return host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")
     }
 
+    /**
+     * Mirrors res/xml/network_security_config.xml: plain HTTP is only allowed to this
+     * device (loopback). Gives a clear message instead of OkHttp's generic
+     * "CLEARTEXT communication ... not permitted" error.
+     */
+    internal fun isCleartextAllowed(url: String): Boolean = CleartextPolicy.isAllowed(url)
+
+    private fun requireCleartextAllowed(url: String) {
+        require(isCleartextAllowed(url)) {
+            "Unverschlüsseltes HTTP ist nur für Dienste auf diesem Handy erlaubt " +
+                "(z. B. http://127.0.0.1:12434). Für andere Geräte bitte HTTPS verwenden."
+        }
+    }
+
     private fun rootUrl(endpoint: String, provider: AiProvider): String {
         val value = endpoint.trim().trimEnd('/')
         require(value.startsWith("http://", true) || value.startsWith("https://", true)) {
             "Bitte eine gültige HTTP- oder HTTPS-Adresse eingeben."
         }
+        requireCleartextAllowed(value)
         val suffixes = listOf(
             "/v1/chat/completions",
             "/v1beta/models",
@@ -414,4 +439,22 @@ internal object ApiConnection {
             return responseText
         }
     }
+}
+
+/**
+ * Authentication headers per provider (pure, unit-tested).
+ * - Anthropic: API keys go in `x-api-key` plus `anthropic-version` (official API
+ *   reference; `Authorization: Bearer` is only for OAuth tokens with a beta header).
+ * - Gemini: `x-goog-api-key` (key never in the URL).
+ * - OpenAI-compatible providers: `Authorization: Bearer <key>` when a key exists.
+ */
+internal fun providerHeaders(provider: AiProvider, apiKey: String?): List<Pair<String, String>> = when (provider) {
+    AiProvider.ANTHROPIC -> listOf("x-api-key" to apiKey.orEmpty(), "anthropic-version" to "2026-10-21")
+    AiProvider.GEMINI -> listOf("x-goog-api-key" to apiKey.orEmpty())
+    AiProvider.OPENAI,
+    AiProvider.OPENROUTER,
+    AiProvider.CEREBRAS,
+    AiProvider.OPENCLAW,
+    AiProvider.CUSTOM -> if (!apiKey.isNullOrBlank()) listOf("Authorization" to "Bearer $apiKey") else emptyList()
+    AiProvider.OLLAMA -> emptyList()
 }

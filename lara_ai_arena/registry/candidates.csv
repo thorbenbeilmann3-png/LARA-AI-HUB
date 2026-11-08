@@ -1,0 +1,6 @@
+candidate_id,platform,model_name,category,public_url,anonymous_free_access,model_identity_verified,test_status,license_status,last_checked_utc,notes
+C001,WKO AI,Unspecified browser model,Text/Reasoning,https://www.webkitonline.com/,UNVERIFIED,NO,UNTESTED,UNKNOWN,,Provider claim only; identify exact selectable models before scoring
+C002,Lofin,Mistral Medium 3.5,Text/Coding,https://lofin.dev/free-ai-playground/,UNVERIFIED,PARTIAL,UNTESTED,UNKNOWN,,Check whether anonymous free use is still available and whether exact model selection is exposed
+C003,Wan2.Video,Unspecified video model,Video,https://wan2.video/,UNVERIFIED,NO,UNTESTED,UNKNOWN,,Provider claim only; verify anonymous access, model/version and usage limits
+C004,Hugging Face,Various public models,Multiple,https://huggingface.co/models,NO,NO,REFERENCE_ONLY,UNKNOWN,,Catalog/source only; public model listing does not prove anonymous inference access
+C005,LMArena,Various comparison models,Text/Reasoning,https://lmarena.ai/,UNVERIFIED,NO,UNTESTED,UNKNOWN,,Benchmark/reference platform; verify access and model identities; not automatically a model host

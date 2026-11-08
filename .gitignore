@@ -8,3 +8,11 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# LARA job database (local state, never commit)
+python-worker/lara.db*

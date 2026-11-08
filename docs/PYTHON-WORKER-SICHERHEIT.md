@@ -1,0 +1,41 @@
+# Python-Worker – Sicherheitsmodell (0.3.0)
+
+## Zwei getrennte Schlüssel
+
+| Umgebungsvariable | Wer hat ihn | Wofür |
+|---|---|---|
+| `LARA_AUTOMATION_TOKEN` | Clients (LARA-App, Automate, Agenten) | `/v1/chat`, `/v1/automation/*`, Freigabe *anfragen* |
+| `LARA_APPROVER_TOKEN` | Nur die Freigabe-Oberfläche des Nutzers | Freigaben *ansehen* und *entscheiden* |
+
+- Ist ein Schlüssel nicht gesetzt, ist der jeweilige Bereich mit HTTP 503 abgeschaltet.
+- Sind beide Schlüssel gleich, sind Freigaben abgeschaltet (503). Sonst könnte sich ein Client selbst freigeben.
+- Schlüssel nur über Umgebungsvariablen setzen, nie in Git, Logs oder Screenshots.
+
+## Freigaben
+
+1. Client: `POST /v1/approvals {"task_id": ...}` → `approval_id` (nur für Aufgaben mit `approval_required: true`).
+2. Nutzer: `GET /v1/approvals`, dann `POST /v1/approvals/{id}/decision {"decision": "approve"|"deny"}` mit dem Approver-Schlüssel.
+3. Client: `POST /v1/automation/run {"task_id": ..., "approval_id": ...}`.
+
+Eine Freigabe gilt für genau eine Aufgabe und eine Ausführung. Sie läuft nach 300 s ab und liegt nur im Arbeitsspeicher, nach einem Neustart ist sie also weg. Es dürfen höchstens 50 Freigaben gleichzeitig offen sein.
+
+Das frühere Feld `approved` wird aus Kompatibilitätsgründen noch angenommen, **aber ignoriert**.
+
+## Bewusste Verhaltensänderung
+
+`python.runtime_info` und `ollama.list_models` sind als `approval_required: false` registriert. Das stand schon vorher so in der Aufgabenliste. Sie laufen jetzt mit gültigem Client-Schlüssel ohne Freigabe. Vorher genügte dafür `approved: true` vom Client, was keinen echten Schutz bot.
+
+## Noch offen (eigene Schritte)
+
+- ~~Node-Server `index.js`: `0.0.0.0` und SSRF~~ → behoben, siehe `docs/NODE-SERVER-SICHERHEIT.md`.
+- Android: `usesCleartextTraffic="true"` für alle Ziele.
+- ~~`/health` zeigt konfigurierte Anbieter~~ → behoben (0.4.0): `/health` liefert nur noch `status`, `service`, `api_version`.
+- `ollama.list_models` nutzt `/api/tags`. Der Server auf dem Pixel bietet laut letztem Test `/v1/models` an.
+- ~~Keine Begrenzung der Anfragerate~~ → behoben (0.4.0): höchstens `LARA_RATE_LIMIT_PER_MIN` (Standard 120) Anfragen pro Minute und Client. Nach `LARA_AUTH_FAIL_LIMIT` (Standard 10) falschen Tokens in 5 Minuten wird der Client für den Rest des Zeitfensters gesperrt (HTTP 429 mit `Retry-After`). Der Zustand liegt nur im Arbeitsspeicher und gilt für einen einzelnen Prozess.
+- Der Worker hat keine Startanleitung. Er soll nur auf `127.0.0.1` oder der VPN-Adresse lauschen (uvicorn-Standard: `127.0.0.1`).
+
+## Nachbesserung (Befunde vom 2026-11-07)
+
+- Der Gemini-Schlüssel wird im Header `x-goog-api-key` gesendet, nicht mehr als `?key=` in der URL. Das gleicht die App an. Der Header-Name ist nach meinem Kenntnisstand korrekt, die Google-Doku war in dieser Umgebung gesperrt und ist **nicht geprüft**.
+- Rate Limiting: Anfragen mit gültigem Token haben einen eigenen Zähler und sind von der Sperre nach falschen Tokens ausgenommen. Eine andere App auf dem Handy, die ebenfalls `127.0.0.1` ist, kann LARA weder mit falschen Tokens noch mit vielen Anfragen ohne Token aussperren. Falsche Tokens werden weiterhin nach `LARA_AUTH_FAIL_LIMIT` Versuchen gesperrt.
+

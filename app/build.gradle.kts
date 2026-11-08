@@ -42,6 +42,13 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.biometric:biometric:1.1.0")
+    // BiometricPrompt needs FragmentActivity; pin a fragment version matching activity 1.9.x.
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    testImplementation("junit:junit:4.13.2")
+    // Real org.json on the JVM (Android's stub throws in local unit tests).
+    testImplementation("org.json:json:20240303")
 }
