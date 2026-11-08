@@ -112,6 +112,7 @@ Außerdem:
 | 08.11. | Prüfen, warum nur ein Modell sichtbar ist | Offen. Die Modellliste kommt vom jeweiligen Server, andere Anbieter brauchen einen API-Schlüssel (ANNAHME, am Gerät prüfen) |
 | 08.11. | Ersteinrichtung Schritt für Schritt | Gilt ab sofort |
 | 08.11. | ChatGPT und Claude arbeiten mit demselben Stand | Diese Datei |
+| 08.11. | Einrichtungsassistent in LARA: 10 Etappen, Thorben drückt nur auf „Weiter“ und die App erledigt den Schritt | Vorschlag an Thorben gegeben, wartet auf Zustimmung. Automatisch möglich sind nur Prüfungen innerhalb von LARA; was in anderen Apps geschieht, braucht Thorben oder eine noch zu klärende Schnittstelle |
 | 08.11. | Verbindung zur lokalen KI unter `192.168.178.21:12434` prüfen, ohne Code zu ändern | Code geprüft, Server im Alpine-Terminal bestanden. Test aus LARA steht aus, siehe `docs/LOKALE-KI-PRUEFUNG.md` |
 
 ## 5. Entscheidungen
