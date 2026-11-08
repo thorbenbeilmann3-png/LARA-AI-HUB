@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -48,6 +49,7 @@ internal fun MonitorPage(context: Context, auth: AuthRequester, usage: List<Toke
     Text("KI- und Auftragsmonitor", style = MaterialTheme.typography.titleLarge, color = LaraColors.Gold)
 
     ProviderStatusCard(context)
+    DraftDecisionCard(context, auth)
 
     GlassCard(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -204,6 +206,99 @@ private fun ProviderStatusCard(context: Context) {
                         Text("Zuletzt erfolgreich: " + java.text.SimpleDateFormat("dd.MM. HH:mm", java.util.Locale.GERMANY).format(java.util.Date(it)),
                             color = LaraColors.TextMuted, style = MaterialTheme.typography.labelSmall)
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Open order drafts with the three explicit choices. Every decision asks for the
+ * device authentication first and is sent with the separate approver token.
+ */
+@Composable
+private fun DraftDecisionCard(context: Context, auth: AuthRequester) {
+    val prefs = remember { context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
+    var drafts by remember { mutableStateOf(emptyList<CoreClient.DraftSummary>()) }
+    var info by remember { mutableStateOf("Noch nicht geladen.") }
+    var approverInput by remember { mutableStateOf("") }
+    var ideaFor by remember { mutableStateOf<String?>(null) }
+    var idea by remember { mutableStateOf("") }
+    val coreUrl = prefs.getString("core_url", CoreClient.DEFAULT_URL) ?: CoreClient.DEFAULT_URL
+
+    fun reload() {
+        info = "Lade Entwürfe …"
+        scope.launch {
+            info = try {
+                val token = ApiKeyStore.load(context, CoreClient.CREDENTIAL_ID) ?: error("Bitte zuerst den Core-Token speichern.")
+                drafts = CoreClient.listDrafts(coreUrl, token)
+                if (drafts.isEmpty()) "Keine offenen Entwürfe." else "${drafts.size} offene(r) Entwurf/Entwürfe."
+            } catch (e: Exception) { "Core nicht erreichbar: ${e.message ?: e.javaClass.simpleName}" }
+        }
+    }
+
+    fun decide(draft: CoreClient.DraftSummary, decision: String, note: String?) {
+        val reason = when (decision) {
+            "approve" -> "Auftrag „${draft.title}“ weitergeben"
+            "reject" -> "Auftrag „${draft.title}“ ablehnen"
+            else -> "Andere Idee zu „${draft.title}“ senden"
+        }
+        auth.request(reason, onSuccess = {
+            scope.launch {
+                info = try {
+                    val approver = ApiKeyStore.load(context, CoreClient.APPROVER_CREDENTIAL_ID)
+                        ?: error("Bitte zuerst den Freigabe-Token speichern.")
+                    val status = CoreClient.decideDraft(coreUrl, approver, draft.id, decision, note)
+                    ideaFor = null; idea = ""
+                    drafts = drafts.filterNot { it.id == draft.id }
+                    when (status) {
+                        "approved" -> "Freigegeben: „${draft.title}“ ist jetzt ein Auftrag."
+                        "rejected" -> "Abgelehnt: „${draft.title}“."
+                        else -> "Zurück zur Überarbeitung: „${draft.title}“."
+                    }
+                } catch (e: Exception) { "Entscheidung nicht gespeichert: ${e.message}" }
+            }
+        }, onFailure = { info = "Nicht entschieden: $it" })
+    }
+
+    GlassCard(Modifier.fillMaxWidth(), accent = LaraColors.Gold) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Offene Entwürfe – deine Entscheidung", style = MaterialTheme.typography.titleMedium)
+            Text("Nichts wird weitergegeben, solange du nicht „Ja“ wählst. Jede Entscheidung fragt nach Fingerabdruck oder PIN.",
+                style = MaterialTheme.typography.bodySmall, color = LaraColors.TextMuted)
+            if (!ApiKeyStore.hasSaved(context, CoreClient.APPROVER_CREDENTIAL_ID)) {
+                OutlinedTextField(value = approverInput, onValueChange = { approverInput = it },
+                    label = { Text("Freigabe-Token (APPROVER_TOKEN aus Pydroid)") },
+                    visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedButton(enabled = approverInput.isNotBlank(), modifier = Modifier.fillMaxWidth(), onClick = {
+                    auth.request("Freigabe-Token speichern bestätigen", onSuccess = {
+                        info = try {
+                            ApiKeyStore.save(context, CoreClient.APPROVER_CREDENTIAL_ID, approverInput)
+                            approverInput = ""
+                            "Freigabe-Token verschlüsselt gespeichert."
+                        } catch (e: Exception) { e.message ?: "Speichern fehlgeschlagen." }
+                    }, onFailure = { info = it })
+                }) { Text("Freigabe-Token sicher speichern") }
+            }
+            OutlinedButton(onClick = { reload() }, modifier = Modifier.fillMaxWidth()) { Text("Entwürfe laden") }
+            Text(info, style = MaterialTheme.typography.bodySmall)
+            drafts.forEach { d ->
+                HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
+                Text(d.title, style = MaterialTheme.typography.titleSmall, color = LaraColors.Gold)
+                Text(d.goal, style = MaterialTheme.typography.bodyMedium)
+                d.acceptance.forEach { Text("✓ $it", style = MaterialTheme.typography.bodySmall) }
+                d.estimatedCost?.let { Text("Kosten laut Entwurf: $it", style = MaterialTheme.typography.bodySmall, color = LaraColors.Warn) }
+                d.note?.let { Text("Deine letzte Idee: $it", style = MaterialTheme.typography.bodySmall, color = LaraColors.TextMuted) }
+                if (ideaFor == d.id) {
+                    OutlinedTextField(value = idea, onValueChange = { idea = it }, label = { Text("Deine Idee") },
+                        minLines = 2, modifier = Modifier.fillMaxWidth())
+                    Button(enabled = idea.isNotBlank(), onClick = { decide(d, "revise", idea.trim()) },
+                        modifier = Modifier.fillMaxWidth()) { Text("Idee senden") }
+                } else {
+                    Button(onClick = { decide(d, "approve", null) }, modifier = Modifier.fillMaxWidth()) { Text("Ja, weitergeben") }
+                    OutlinedButton(onClick = { decide(d, "reject", null) }, modifier = Modifier.fillMaxWidth()) { Text("Nein, ablehnen") }
+                    OutlinedButton(onClick = { ideaFor = d.id }, modifier = Modifier.fillMaxWidth()) { Text("Ich habe eine andere Idee") }
                 }
             }
         }

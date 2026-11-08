@@ -76,3 +76,17 @@ class TokenUsageTest {
         assertEquals(46.0, jobs[0].percent, 0.0)
     }
 }
+
+class DraftParsingTest {
+    @Test
+    fun draftsAreParsed() {
+        val drafts = CoreClient.parseDrafts(JSONObject("""{"drafts":[{"id":"a","title":"T","goal":"G","status":"draft","note":null,
+            "details":{"acceptance_criteria":["X"],"estimated_cost":"0 €"}},{"id":"b","title":"U","goal":"H","status":"revise","note":"Idee","details":{}}]}"""))
+        assertEquals(2, drafts.size)
+        assertEquals(listOf("X"), drafts[0].acceptance)
+        assertEquals("0 €", drafts[0].estimatedCost)
+        assertNull(drafts[0].note)
+        assertEquals("Idee", drafts[1].note)
+        assertNull(drafts[1].estimatedCost)
+    }
+}
