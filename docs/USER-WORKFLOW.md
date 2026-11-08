@@ -20,6 +20,14 @@ Nach jeder Aufgabe erhält der Nutzer eine kurze Rückmeldung:
 4. Was noch fehlt oder nicht getestet werden konnte.
 5. Was als Nächstes sinnvoll ist.
 
+## Claude-Rückmeldungen
+
+- Jede neue Claude-Antwort oder neue Erkenntnis zu LARA, die der Nutzer übermittelt oder die über eine tatsächlich verfügbare Integration eingeht, wird zeitnah in GitHub dokumentiert.
+- Der Nutzer erhält jedes Mal eine Nachricht mit einer verständlichen Zusammenfassung: Was Claude neu mitgeteilt hat, was davon geprüft/bestätigt ist, was offen bleibt und welche Auswirkungen es auf LARA hat.
+- Neue Claude-Aussagen werden nicht ungeprüft als Tatsachen oder erledigte Arbeiten übernommen. Sie werden als Claude-Aussage gekennzeichnet und, soweit möglich, mit Repository, Build oder Tests abgeglichen.
+- Es darf keine automatische Überwachung oder Benachrichtigung behauptet werden, solange keine Claude-Integration oder ein funktionierender Benachrichtigungsweg eingerichtet ist.
+- Wenn der Nutzer eine Claude-Antwort hier einfügt, wird sie ausgewertet, zusammengefasst und in GitHub festgehalten.
+
 ## Erster konkreter Wunsch (08.11.2026)
 
 - In der neuen LARA-App ist Text schwarz und dadurch möglicherweise schlecht lesbar. Die Textfarben müssen gegen die jeweiligen Hintergründe geprüft und korrigiert werden.
@@ -29,4 +37,4 @@ Nach jeder Aufgabe erhält der Nutzer eine kurze Rückmeldung:
 
 ## Status
 
-Diese Datei dokumentiert die Arbeitsregel und den ersten konkreten Wunsch. Sie ist keine Bestätigung, dass die genannten App-Probleme bereits behoben wurden.
+Diese Datei dokumentiert Arbeitsregeln und Wünsche. Sie ist keine Bestätigung, dass die genannten App-Probleme bereits behoben wurden oder dass Claude automatisch überwacht wird.
