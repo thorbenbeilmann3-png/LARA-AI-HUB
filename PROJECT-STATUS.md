@@ -48,7 +48,7 @@ Außerdem:
 | `claude/alpine-verbindungstest` | `4c4a194` | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
 | `claude/projekt-dokumentation` | dieser Stand | Diese Datei, `CHANGELOG.md`, `tools/alpine-info.sh` | #4 nach `main` |
 
-**Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor.
+**Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor. Aktuell: `LARA-Test-4c4a194.apk`, Commit `4c4a194`, SHA-256 `651b7bfaefdd7df9cf1103fd9993745171334374dd672227aab428558f107de5`, kein Gerätetest.
 
 **Zwei verschiedene „Ollama“ auf dem Pixel, nicht verwechseln:**
 
@@ -71,7 +71,7 @@ Außerdem:
 | Node-Server | PASS, 11 Tests | Run 42486968635, `512a001`; am 08.11. lokal wiederholt: 11 bestanden |
 | Python-Tests auf dem Stand von PR #1 | **FAIL** | Run 42485906156, `3ffc400`, siehe F12 |
 | Lokale KI `192.168.178.21:12434` | Echte Chat-Anfrage **NICHT GETESTET**, von der Cloud aus nicht erreichbar | `docs/LOKALE-KI-PRUEFUNG.md` |
-| Unabhängige Prüfung Verbindungstest | erste Runde: Fehler gefunden, behoben; zweite Runde läuft | siehe Abschnitt 8 |
+| Unabhängige Prüfung Verbindungstest | Zweite Runde bestanden (Urteil „ship“). Nicht geprüft: Android-Laufzeit und Pixel | Abschnitt 8 |
 
 **Nutzerangaben, von den Assistenten nicht selbst geprüft:**
 
@@ -135,6 +135,8 @@ Zeilenangaben beziehen sich auf den Branch `claude/pc-thorben-setup-i4qwi5` @ `5
 | F11 | App-Text sagt, OpenClaw dürfe HTTP im privaten LAN nutzen; tatsächlich ist es blockiert | `ApiConnection.kt:379`, `MainActivity.kt:746` | Offen |
 | F13 | LARA (PR-Stand), Core und Node-Proxy lassen `http://192.168.178.21:12434` nicht zu. Das ist eine bewusste Sicherheitsregel (`cb7feb0`), bei Bedarf also eine Entscheidung und kein Fehler | `network_security_config.xml`, `ChatHistory.kt:60`, `gateway.py`, `index.js:46` | Wartet auf Klärung, wo der Server läuft |
 | F14 | Core `/v1/chat` mit Anbieter `ollama` nutzt `/api/chat`; der Server-Typ auf Port 12434 antwortete dort früher mit 404 | `python-worker/app/main.py:248` | Offen |
+| F15 | `ApiConnection` folgt einem System-Proxy, der Verbindungstest nicht. Für Loopback sollte auch die Chat-Verbindung direkt laufen | `ApiConnection.kt:56` | Offen, Phase B |
+| F16 | Kleine Testlücken im Verbindungstest, z. B. `{"version":1.5}`. Eine Version mit führendem `v` würde als „nicht Ollama“ gemeldet (nur denkbar, offizielle Builds nennen sie ohne `v`) | `AlpineProbeTest.kt`, `AlpineProbe.kt` | Offen, geringes Risiko, Phase B |
 | F12 | Python-Tests rot auf dem Stand von PR #1 (Exit-Code 2). Das Protokoll nennt einen in `d6e8b98` (PR #3) behobenen CI-Importfehler; ob das die Ursache ist, ist nicht bestätigt, das Log war hier nicht lesbar | Run 42485906156 | Offen |
 
 ### Dokumentation passt nicht zum Stand
@@ -156,7 +158,7 @@ Nur gemeldet, nicht geändert (Regel 8).
 ## 7. Nächste Schritte und Blockaden
 
 1. **Thorben:** Chat-Test aus `docs/LOKALE-KI-PRUEFUNG.md` und Terminal-Befehl aus Abschnitt 10 ausführen, Ausgaben in den Claude-Chat kopieren.
-2. **Thorben:** Testversion „LARA Test“ installieren und Verbindung prüfen, sobald Claude sie freigibt.
+2. **Thorben:** Testversion „LARA Test“ installieren und Verbindung prüfen. Die APK wurde im Claude-Chat bereitgestellt.
 3. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.
 4. **ChatGPT:** Abschnitt 8 prüfen und das Ergebnis in Abschnitt 9 eintragen.
 
@@ -180,7 +182,7 @@ Nur gemeldet, nicht geändert (Regel 8).
   2. Commits `0373531`, `a709d88` und `4c4a194`: Sagt die Karte wirklich nur, was beobachtet wurde?
   3. Ist die Ursache von F1 richtig (`LaraTheme.kt`, `MainActivity.kt:405`)?
   4. Ist die Reihenfolge E1 so gemeint?
-- **Unabhängige Prüfung:** Ein eigener Prüf-Agent fand in der ersten Runde neun Mängel, darunter falsche „erreichbar“-Meldungen und ein mögliches Speichern eingetippter Token. Behoben in `a709d88`. Die zweite Runde lief beim Schreiben noch; das Ergebnis trägt Claude hier nach.
+- **Unabhängige Prüfung:** Ein eigener Prüf-Agent fand in der ersten Runde neun Mängel, darunter falsche „erreichbar“-Meldungen und ein mögliches Speichern eingetippter Token. Behoben in `a709d88`. Zweite Runde: acht Befunde behoben, die Testlücken teilweise (siehe F16), Urteil „ship“. Ausgeführt wurden 28 Tests und 34 absichtlich eingebaute Fehler mit den echten Bibliotheken unter Linux. `4c4a194` (nur Textfarbe) wurde gelesen, nicht ausgeführt. Nicht geprüft: Android-Laufzeit und Pixel.
 - **Nicht getestet:** alles auf dem Pixel.
 - **Lokale KI (`192.168.178.21:12434`):** Code geprüft, nichts geändert. Der echte Chat war von der Cloud aus nicht möglich (curl-Fehler 7). Details und Testbefehl in `docs/LOKALE-KI-PRUEFUNG.md`. Bitte prüfen, ob die Tabelle der Schnittstellen stimmt.
 
