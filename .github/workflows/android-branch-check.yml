@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - "claude/alpine-**"
+    paths-ignore:
+      - "docs/**"
   workflow_dispatch:
 
 permissions:
@@ -72,7 +74,9 @@ jobs:
           APK=app/build/outputs/apk/debug/app-debug.apk
           AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 | sort -V | tail -1)
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
-          "$AAPT2" dump badging "$APK" | grep -E "^package:|^application-label:|^uses-permission:|^sdkVersion|^targetSdkVersion"
+          "$AAPT2" dump badging "$APK" > badging.txt
+          grep -E "^package:|^application-label:|^uses-permission:|^sdkVersion|^targetSdkVersion" badging.txt
+          grep -q "^package: name='de.laraai.hub.alpinetest'" badging.txt
           "$APKSIGNER" verify --print-certs "$APK" | tee apk-certs.txt
           CERT=$(grep -m1 "certificate SHA-256 digest" apk-certs.txt | awk '{print $NF}')
           SUM=$(sha256sum "$APK" | cut -d' ' -f1)

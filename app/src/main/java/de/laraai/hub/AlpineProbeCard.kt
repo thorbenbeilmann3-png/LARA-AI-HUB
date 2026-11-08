@@ -46,7 +46,7 @@ private fun probeEnvironment(context: Context) = ProbeEnvironment(
 private fun colorFor(result: ProbeResult): Color = when (result) {
     ProbeResult.OK -> LaraColors.Ok
     ProbeResult.AUTH_REQUIRED -> LaraColors.Cyan
-    ProbeResult.READ_TIMEOUT, ProbeResult.CONNECT_TIMEOUT -> LaraColors.Warn
+    ProbeResult.READ_TIMEOUT, ProbeResult.CONNECT_TIMEOUT, ProbeResult.TIMEOUT -> LaraColors.Warn
     else -> LaraColors.Error
 }
 
@@ -68,11 +68,13 @@ internal fun AlpineProbeCard(context: Context) {
         if (running) return
         running = true
         copied = false
-        prefs.edit()
-            .putString(KEY_OLLAMA, ollamaUrl.trim())
-            .putString(KEY_MCP, mcpUrl.trim())
-            .putString(KEY_MODEL, expectedModel.trim())
-            .apply()
+        report = null
+        // Only clean addresses are kept: a mistyped token must not end up in plain-text settings.
+        prefs.edit().apply {
+            if (AlpineProbe.ollamaAddressProblem(ollamaUrl) == null) putString(KEY_OLLAMA, ollamaUrl.trim())
+            if (AlpineProbe.mcpAddressProblem(mcpUrl) == null) putString(KEY_MCP, mcpUrl.trim())
+            putString(KEY_MODEL, expectedModel.trim())
+        }.apply()
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { probe.run(ollamaUrl, mcpUrl, expectedModel) }

@@ -72,13 +72,15 @@ Neue Karte unter **Tools → Alpine / Ollama – Verbindungstest**. Sie läuft i
 2. `GET {Ollama}/api/tags`, erkennt das erwartete Modell
 3. `GET {MCP}` **ohne Token**, wertet nur den Statuscode aus
 
-„Erreichbar“ meldet die Karte nur, wenn eine gültige Ollama-Version zurückkam. Ein HTTP 401 vom MCP-Endpunkt zeigt nur, dass dort ein Dienst antwortet. Der kopierbare Bericht enthält Commit, UID, PID und Android-Version, aber keine Antworten und keine Zugangsdaten; Adressen mit Zugangsdaten oder Parametern werden abgewiesen.
+„Erreichbar“ meldet die Karte nur, wenn eine gültige Versionsangabe und eine gültige Modellliste zurückkamen. Ein HTTP 401 vom MCP-Endpunkt zeigt nur, dass dort ein Dienst antwortet. Der kopierbare Bericht enthält Commit, UID, PID und Android-Version, aber keine Antworten und keine Zugangsdaten. In den Adressfeldern sind nur Protokoll, Rechner und Port erlaubt, bei MCP zusätzlich `/mcp`; andere Adressen werden weder gesendet noch gespeichert.
 
 | Meldung | Bedeutung | Naheliegende Ursache |
 |---|---|---|
 | Abgewiesen | Aus Sicht dieser App lauscht dort nichts | Server beendet, falscher Port oder Alpine-Loopback ist getrennt |
+| Verbindung verhindert | Android hat die Verbindung nicht aufgebaut | Keine Route oder keine Berechtigung, Firewall- oder VPN-App |
 | Keine Verbindung | Zeitüberschreitung beim Verbinden | Netzwerkregel, Firewall- oder VPN-App |
 | Keine Antwort | Verbindung steht, Server schweigt | Alpine-App eingefroren oder Gerät überlastet |
+| Zeitüberschreitung | Gesamtfrist abgelaufen, Verbindungsstand unbekannt | Wie bei den beiden Zeilen darüber |
 | Unerwartete Antwort | Etwas antwortet, aber nicht wie erwartet | Anderer Dienst auf dem Port |
 
 **Geräteprüfung:**
@@ -87,7 +89,7 @@ Neue Karte unter **Tools → Alpine / Ollama – Verbindungstest**. Sie läuft i
 2. „LARA Test“ öffnen, unter Tools „Verbindung jetzt testen“ tippen, Bericht kopieren.
 3. **Gegenprobe:** `ollama serve` in Alpine beenden und erneut testen. Es muss „Abgewiesen“ erscheinen. Erst damit ist belegt, dass wirklich dieser Alpine-Server geantwortet hat.
 
-Die Testversion heißt „LARA Test“ (`de.laraai.hub.alpinetest`) und installiert sich neben einer vorhandenen LARA-App, sie kann diese samt gespeicherter Schlüssel nicht überschreiben. Für den Nachweis im echten LARA-Prozess reicht in der vorhandenen App: Tools → Ollama · lokal → Adresse `http://127.0.0.1:11434` → „Verbinden / Modelle laden“.
+Die Testversion heißt „LARA Test“ (`de.laraai.hub.alpinetest`) und installiert sich neben einer vorhandenen LARA-App, sie kann diese samt gespeicherter Schlüssel nicht überschreiben. Eine neuere Testversion lässt sich wegen der wechselnden CI-Signatur erst installieren, wenn die ältere „LARA Test“ entfernt ist. Für den Nachweis im echten LARA-Prozess reicht in der vorhandenen App: Tools → Ollama · lokal → Adresse `http://127.0.0.1:11434` → „Verbinden / Modelle laden“.
 
 ## 5. Automate: Prüfung der vorhandenen Anbindung
 
