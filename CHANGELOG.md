@@ -19,7 +19,7 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 - **Commits:** `f9473d2` (Auftrag übernommen), `0373531` (Verbindungstest), `22d4ee6` (Doku), `a709d88` (Prüfbefunde behoben), `4c4a194` (Textfarbe der Karte)
 - **Neu:** `AlpineProbe.kt`, `AlpineProbeCard.kt`, `AlpineProbeTest.kt`, `.github/workflows/android-branch-check.yml`, `docs/ALPINE-OLLAMA-STATUS.md`
 - **Geändert:** `MainActivity.kt` (eine Karte unter Tools, `copyText` intern), `AndroidManifest.xml` (App-Name über Platzhalter), `app/build.gradle.kts` (Commit im Build, Testpaket, Testbibliothek), `docs/AI_SHARED_HANDOFF.md` (Eintrag angehängt)
-- **Tests:** GitHub Actions Run 42522816831 (`a709d88`): 80 Unit-Tests, 0 Fehler, APK gebaut. Build für `4c4a194` lief beim Schreiben noch.
+- **Tests:** GitHub Actions Run 42522816831 (`a709d88`) und Run 42523661265 (`4c4a194`): je 80 Unit-Tests, 0 Fehler, APK gebaut.
 - **Unabhängige Prüfung:** Erste Runde „fix first“ mit neun Befunden. Alle bearbeitet in `a709d88`. Zweite Runde lief beim Schreiben noch.
 - **Fehler gefunden und behoben:** falsche „erreichbar“-Meldung bei fremden Diensten, Fehlerursachen falsch benannt, eingetippte Zugangsdaten konnten gespeichert werden, Servertext im Bericht. Getestet durch die in `a709d88` verschärften Unit-Tests.
 - **Nicht getestet:** Alles auf dem Pixel.
