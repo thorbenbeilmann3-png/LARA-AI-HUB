@@ -7,9 +7,10 @@ Zuletzt aktualisiert: 09.11.2026 von Claude. Vor jeder Arbeit zusätzlich den ak
 
 - `main` enthält nur die kleine Starter-App und Dokumentation. Die eigentliche App mit Anbietern, Keystore, App-Sperre und Automate liegt auf Branches, die **nicht** in `main` sind (PR #1 und #3).
 - Der Verbindungstest läuft auf dem Pixel 9a (Android 17). Ein echter App-Prozess erreicht `127.0.0.1:12434` und bekommt von `127.0.0.1:8765/mcp` die Antwort 401.
-- Die lokale KI auf Port 12434 beantwortet echte Chat-Anfragen, nachgewiesen im Alpine-Terminal auf dem Pixel. **Der Chat aus der LARA-App und das Ollama in Alpine (Port 11434) sind noch nicht getestet.**
-- Auf `claude/alpine-verbindungstest` liegen seit dem 09.11. zusätzlich die vorbereitete feste Signatur, FreeLLMAPI, „Eingaben merken“ und die Automate-Schnittstelle. CI ist grün, **am Gerät ist nichts davon getestet.**
-- Am Pixel belegt (Build `0f3aaa7`, Bericht von Thorben vom 09.11.): Der Assistent läuft, 5 von 10 Etappen sind erledigt, die lokale KI hat in Etappe 4 echt geantwortet. Der Chat-Tab selbst ist noch nicht getestet.
+- Die lokale KI auf Port 12434 beantwortet echte Chat-Anfragen, nachgewiesen im Alpine-Terminal auf dem Pixel. **Der Chat aus der LARA-App ist noch nicht getestet.** Ollama in Alpine (Port 11434) ist laut Bericht erledigt, ein Nachweis aus dem App-Prozess fehlt (B1).
+- Auf `claude/alpine-verbindungstest` liegen seit dem 09.11. zusätzlich die vorbereitete feste Signatur, FreeLLMAPI, „Eingaben merken“ und die Automate-Schnittstelle. CI ist grün. **Am Gerät:** Laut Bericht von Thorben sind auf `6c12380` die Etappen 4, 6 und 7 des Assistenten erledigt, 8 und 9 übersprungen. Protokolle oder Screenshots liegen dazu nicht vor (Abschnitt 3).
+- Laut Bericht von Thorben vom 09.11. (Build `0f3aaa7`): Der Assistent läuft, 5 von 10 Etappen sind erledigt, die lokale KI hat in Etappe 4 echt geantwortet. Der Chat-Tab selbst ist noch nicht getestet.
+- Preview-Basis ist `6c12380` (E16). Der Folgebuild `981b836` hat nur die Platzhalter-Adresse (E18) und ist nicht am Gerät getestet. Die Preview-APK `6c12380` enthält noch die alte Adresse (F20).
 - Nächster Schritt: Endspurt bis zur Preview am 11.11.2026 (Abschnitt 7).
 
 ## 1. Regeln der Zusammenarbeit
@@ -50,7 +51,7 @@ Außerdem:
 | `claude/pc-thorben-setup-i4qwi5` | `512a001` | Baut auf #1 auf: App-Sperre, neues Design, Monitor, Core, Gedächtnis, Übergabeprotokoll | #3 nach #1, Entwurf |
 | `feature/automate-python-bridge` | `6cd8c40` | Bridge Automate ↔ Python auf Port 8765 | #2 nach `main`, Entwurf |
 | `safety/pre-arena-20261105` | `1f5b1f1` | Sicherungsstand | – |
-| `claude/alpine-verbindungstest` | Preview-Stand `6c12380` (F18-Testversion ist `64fe56d`) | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
+| `claude/alpine-verbindungstest` | Preview-Basis `6c12380`, neuester Commit `981b836` (nur Platzhalter-Adresse, E18). F18-Testversion ist `64fe56d` | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
 | `claude/projekt-dokumentation` | `9049d5a` | In `main` übernommen, nicht weiterführen (Branch bleibt bestehen) | #4, gemergt als `abd6b38` |
 
 **Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor.
@@ -59,7 +60,7 @@ Außerdem:
 
 | Angabe | Wert |
 |---|---|
-| Datei | `LARA-Preview-6c12380.apk` |
+| Datei | `LARA-Test-6c12380.apk` |
 | Commit | `6c12380` |
 | SHA-256 | `1f25d7e20cafc6679d63d16ce30dfc9137cb5c1c48cb5a8ab33fde44b477ce7d` |
 | Größe | 18.419.942 Bytes |
@@ -67,9 +68,25 @@ Außerdem:
 | Datum | 09.11.2026 |
 | Release-Entwurf | `lara-alpine-test-6c12380` enthält dieselbe Datei unter dem Namen `LARA-Test-6c12380.apk`. Einen Entwurf mit dem Preview-Namen konnte die Claude-Sitzung nicht anlegen (HTTP 403) |
 | Paket | `de.laraai.hub.alpinetest` |
+| Zertifikat (SHA-256, Anfang) | `997f576a…` |
+| Adresse in der APK | Alte Adresse **enthalten** (`classes3.dex`, Byte-Suche am 09.11.). Im Repo seit `981b836` entfernt, in der Git-Historie erhalten (F20) |
+| Am Gerät getestet | Teilweise, nur laut Bericht von Thorben (09.11.): Etappen 4, 6 und 7 erledigt, 8 und 9 übersprungen, Chat-Tab nicht getestet. Ohne Protokolle, siehe Abschnitt 3 |
+
+**Folgebuild `981b836` (Platzhalter-Adresse, E18):**
+
+| Angabe | Wert |
+|---|---|
+| Datei | `LARA-Test-981b836.apk` (privater Release-Entwurf `lara-alpine-test-981b836`) |
+| Commit | `981b836` auf `claude/alpine-verbindungstest`, direkt nach `6c12380` |
+| SHA-256 | `f837eb48d5e23bf91d877b2a59dbca05921af8f5065c45f4d029bb534144d220` |
+| Größe | 18.419.942 Bytes |
+| CI-Lauf | Android branch check #13 (Run-ID `42623959500`), grün, 167 Unit-Tests ohne Fehler |
+| Zertifikat (SHA-256) | `5c5f690e33d6ca8f64e57a4b8874054700ea57d39645c6e2a524e4a55c79f595`. Anders als bei `6c12380`, deshalb vorher die alte Test-App deinstallieren (löscht lokale Daten) |
+| Adresse in der APK | Alte Adresse nicht enthalten, Platzhalter enthalten (Byte-Suche am 09.11.) |
+| Paket | `de.laraai.hub.alpinetest` |
 | Am Gerät getestet | NEIN |
 
-**Testversion für F18:**
+**Testversion für F18 (nicht die Preview-Basis):**
 
 | Angabe | Wert |
 |---|---|
@@ -99,6 +116,18 @@ Achtung: `LARA-Test-64fe56d.apk` hat eine andere Signatur als die veraltete Date
 | Besonderheit | Kein Standard-Ollama: `/api/chat` antwortete früher mit 404 (`docs/AI_HANDOVER.md`), `/api/version` meldet 0.1.32, `/api/tags` ist leer, das Modell steht unter `/v1/models` | Laut Auftrag normales Ollama, muss in einem offenen Terminal laufen |
 
 ## 3. Was tatsächlich funktioniert
+
+**Ergebnisse vom Pixel 9a, Bericht von Thorben vom 09.11., Build `6c12380` (Preview-Basis, Nutzerangabe, nicht von Claude geprüft):**
+
+| Prüfung | Ergebnis |
+|---|---|
+| Assistent Etappe 4: Test-Nachricht an die lokale KI | erledigt laut Bericht |
+| Etappe 6: Ollama in Alpine (Port 11434) | erledigt laut Bericht. Ob der App-Prozess Port 11434 erreicht hat, ist nicht belegt (B1) |
+| Etappe 7: Automate prüfen | erledigt laut Bericht. Ohne Nachweis bleiben die Automate-Zeilen unten NICHT GETESTET |
+| Etappen 8 und 9 | übersprungen laut Bericht |
+| Chat-Tab mit einer eigenen Frage | **NICHT GETESTET** |
+
+Der Bericht enthält keine Protokolle, Fehlertexte oder Screenshots.
 
 **Ergebnisse vom Pixel 9a, Bericht von Thorben vom 09.11., Build `0f3aaa7` (Nutzerangabe):**
 
@@ -132,6 +161,9 @@ Achtung: `LARA-Test-64fe56d.apk` hat eine andere Signatur als die veraltete Date
 | Lokale KI auf Port 12434: Chat-Tab | Codeprüfung: Er ruft dieselbe Funktion wie Etappe 4 (`ApiConnection.chat`), die am Gerät durch die Test-Nachricht belegt ist, schickt den Verlauf mit und zeigt beide Seiten. Der Chat-Tab selbst: am Gerät **NICHT GETESTET** | `MainActivity.kt`, `SetupWizardPage.kt` |
 | Unabhängige Prüfung Verbindungstest | Zweite Runde bestanden (Urteil „ship“). Nicht geprüft: Android-Laufzeit und Pixel | Abschnitt 8 |
 | Android-Build und Unit-Tests `6c12380` (Preview-Stand) | PASS, 167 Tests, 0 Fehler | Run 42597721597 |
+| Android-Build und Unit-Tests `981b836` (Platzhalter-Adresse) | PASS, 167 Tests, 0 Fehler | Run 42623959500 |
+| Adressprüfung der APK `6c12380` | Alte Adresse **enthalten** (`classes3.dex`), im Repo seit `981b836` entfernt | Byte-Suche, F20 |
+| Adressprüfung der APK `981b836` | Alte Adresse nicht enthalten, Platzhalter enthalten | Byte-Suche, 09.11. |
 | Android-Build und Unit-Tests `0f3aaa7` | PASS, 167 Tests, 0 Fehler (120 bestehende unverändert, 47 neu) | Run 42588759747 |
 | Feste Signatur: Skript-Tests und Beweis mit echten Builds | PASS, 77 Prüfungen. Gleicher Wegwerf-Schlüssel ergibt in zwei Builds dasselbe Zertifikat, ohne ihn ein anderes | Run 42586874287, `ba631d8` |
 
@@ -139,7 +171,7 @@ Achtung: `LARA-Test-64fe56d.apk` hat eine andere Signatur als die veraltete Date
 
 | Anbieter | Stand | Am Gerät |
 |---|---|---|
-| FreeLLMAPI | integriert, ohne HTTPS im LAN blockiert. Standard-Adresse `http://192.168.178.21:3001/v1`, frei änderbar. Verbindungstest liest nur `/v1/models`, Schlüssel optional im ApiKeyStore. Anleitung: `docs/FREELLMAPI.md` | NICHT GETESTET, auch kein echter FreeLLMAPI-Server |
+| FreeLLMAPI | integriert. HTTP im Heimnetz wird blockiert (E11). Standard-Adresse ist der Platzhalter `http://192.0.2.10:3001/v1` (seit `981b836`, E18), frei änderbar. Die echte Adresse steht nicht im Repo. Verbindungstest liest nur `/v1/models`, Schlüssel optional im ApiKeyStore. Anleitung: `docs/FREELLMAPI.md` | NICHT GETESTET, auch kein echter FreeLLMAPI-Server |
 
 **Automate (Testversion `0f3aaa7`, Anleitung: `docs/AUTOMATE-SCHNITTSTELLE.md`):**
 
@@ -185,7 +217,8 @@ Achtung: `LARA-Test-64fe56d.apk` hat eine andere Signatur als die veraltete Date
 | 09.11. | Verbesserungspaket A bis E und Token-Sparregeln | Paket A gebaut, wartet auf das Secret. B bis E offen, je Paket eine eigene Sitzung |
 | 09.11. | FreeLLMAPI als Anbieter, Eingaben merken | Gebaut, CI grün, am Gerät nicht getestet |
 | 09.11. | Automate-Anbindung offiziell machen (F8, F9) | Gebaut, CI grün, am Gerät nicht getestet. F9 durch Entfernen erledigt, siehe E14 |
-| 09.11. | Endspurt: Preview am 11.11.2026, stabile Mindestversion aus App, Assistent, Verbindungstest und lokalem Chat | Preview-Stand `6c12380` gebaut, Plan in Abschnitt 7 |
+| 09.11. | Endspurt: Preview am 11.11.2026, stabile Mindestversion aus App, Assistent, Verbindungstest und lokalem Chat | Preview-Basis `6c12380` (E16). Gerätestand laut Bericht: Etappen 4, 6, 7 erledigt, 8 und 9 übersprungen, Chat-Tab offen. Plan in Abschnitt 7 |
+| 09.11. | FreeLLMAPI-Adresse aus dem Repo entfernen (Entscheidung 3 der Projektleitung) | Umgesetzt in `981b836` (E18), CI grün, nicht am Gerät getestet |
 
 ## 5. Entscheidungen
 
@@ -206,6 +239,11 @@ Achtung: `LARA-Test-64fe56d.apk` hat eine andere Signatur als die veraltete Date
 | E13 | Feste CI-Signatur über das Secret `LARA_CI_KEYSTORE_B64` | Auftrag vom 09.11. Thorben trägt das Secret selbst ein | Thorben |
 | E14 | LARA startet keine Automate-Flows. Die nicht dokumentierte Aktion, das Feld für die Flow-Adresse und der Autostart sind entfernt. Offizielle Schnittstelle bleibt `de.laraai.hub.action.START_FLOW` | Beschluss vom 09.11. | Thorben |
 | E15 | Bis zur Preview am 11.11.2026 nichts Neues. Preview-Basis ist `6c12380`. Der neue Chat-Client (`34ea27e`) bleibt zurückgezogen, weil der vorhandene Chat-Weg am Gerät in Etappe 4 geantwortet hat. Er kommt direkt nach der Preview als F4/F5-Fix zurück, dann mit Gerätetest | Entscheidung vom 09.11. F4 und F5 bleiben bis dahin offen | Thorben |
+| E16 | Preview-Basis bleibt `6c12380`. Kein Wechsel zu `64fe56d` | Die Gerätetests (Etappen 4, 6, 7) liefen laut Bericht bereits auf `6c12380` | Projektleitung (über Thorben) |
+| E17 | FreeLLMAPI und START_FLOW bleiben im Branch. Die Commits `c57ef92`, `0f3aaa7` und `6c12380` gelten als freigegebene Arbeit | Beide wurden im dokumentierten Projektverlauf ausdrücklich beauftragt | Projektleitung (über Thorben) |
+| E18 | Standard-Adresse für FreeLLMAPI ist der Platzhalter `http://192.0.2.10:3001/v1` (Dokumentationsadresse nach RFC 5737). Die echte Adresse steht nicht im Repo und wird nur lokal dokumentiert. Umgesetzt in `981b836`, CI grün | Heimnetz-Adresse soll nicht im Repo stehen. Angebot von Claude, von der Projektleitung angenommen | Projektleitung (über Thorben), Umsetzung Claude |
+| E19 | Die feste Signatur wird nach der Preview gesetzt. Bis dahin ist die wechselnde Signatur akzeptiert. Nichts weiter tun | Ergänzt E13 | Projektleitung (über Thorben) |
+| E20 | Doku-Änderungen laufen über PR #6 (`docs/paket-a-freellmapi-automate`), kein Merge ohne Freigabe | Wie E10 | Projektleitung (über Thorben) |
 
 ## 6. Offene Fehler und Widersprüche
 
@@ -233,6 +271,8 @@ Zeilenangaben beziehen sich auf den Branch `claude/pc-thorben-setup-i4qwi5` @ `5
 | F17 | Beim Installieren einer APK kam auf dem Pixel „App konnte nicht installiert werden“ (Thorben, 08.11., 22:20 Uhr). Welche Datei es war, ist nicht bekannt. `LARA-Test-4c4a194.apk` ließ sich danach installieren und läuft (Bericht 22:27 Uhr) | Gerät | In Arbeit. Wechselnde Signaturen sind als Mechanismus belegt und die wahrscheinliche Ursache, im Einzelfall nicht bewiesen. Lösung in `docs/FESTE-SIGNATUR.md` |
 | F18 | **Codekorrektur umgesetzt und unabhängig geprüft (PASS):** Wenn `/api/tags` HTTP 200 mit leerer Modellliste liefert, fragt `AlpineProbe` zusätzlich `/v1/models` ab und übernimmt `data[].id`. Bei nicht leerer oder nicht lesbarer Tags-Antwort erfolgt kein Fallback. | `AlpineProbe.kt`, `AlpineProbeTest.kt` auf `claude/alpine-verbindungstest` | Code PASS, drei Regressionstests PASS; CI laut Vibe GitHub-Actions-Runs #5 und #6 grün. Testversion/Release-Entwurf noch nicht von ChatGPT verifiziert; Gerätetest offen. Kein Merge. |
 | F19 | Das Pixel läuft mit Android 17. Für Apps mit Target-SDK 37 gilt eine neue Berechtigung für lokale Netze, zu Loopback sagt die Android-Doku nichts. LARA hat Target-SDK 35 | `app/build.gradle.kts` | Vor einer Anhebung auf 37 neu testen |
+| F20 | Die Preview-APK `6c12380` enthält die frühere Standardadresse von FreeLLMAPI (in `classes3.dex`, am 09.11. per Byte-Suche geprüft). Im Repo ist sie seit `981b836` entfernt, in der Git-Historie bleibt sie erhalten. Die Gerätetests liefen laut Bericht auf dieser Basis | `claude/alpine-verbindungstest` (Historie), Release-Entwurf `lara-alpine-test-6c12380` | Offen. Die Historie umzuschreiben braucht Thorbens ausdrückliche Freigabe. Ob die Preview aus `981b836` gebaut wird, ist offen (B11) |
+| F21 | Die Heimnetz-Adresse mit Port 12434 steht noch in `docs/LOKALE-KI-PRUEFUNG.md` (auch auf `main`), in `PROJECT-STATUS.md` und in `CHANGELOG.md`. E18 hat nur die Adresse mit Port 3001 ersetzt | `docs/LOKALE-KI-PRUEFUNG.md`, `PROJECT-STATUS.md`, `CHANGELOG.md` | Offen. Ersetzen braucht Thorbens Freigabe, weil `main` betroffen ist. Vorschlag: eigener PR |
 | F12 | Python-Tests rot auf dem Stand von PR #1 (Exit-Code 2). Das Protokoll nennt einen in `d6e8b98` (PR #3) behobenen CI-Importfehler; ob das die Ursache ist, ist nicht bestätigt, das Log war hier nicht lesbar | Run 42485906156 | Offen |
 
 ### Dokumentation passt nicht zum Stand
@@ -255,28 +295,29 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 **Endspurt bis zur Preview am 11.11.2026 (Plan vom 09.11.):**
 
-1. **Thorben:** In Alpine `ollama serve` ausführen und offen lassen, dann Etappe 6 wiederholen.
-2. **Thorben:** Etappe 7: Testflow in Automate, der LARA startet (`docs/AUTOMATE-SCHNITTSTELLE.md` auf `claude/alpine-verbindungstest`).
-3. **Thorben:** Etappen 8 und 9 nur mit eigenen API-Schlüsseln, sonst überspringen. Für die Preview nicht nötig.
-4. **Claude:** Doku-Pull-Request und Preview-Stand `6c12380`: erledigt, Freigabe durch Thorben steht aus.
-5. **Thorben:** `LARA-Preview-6c12380.apk` installieren und den Chat-Tab mit einer echten Frage testen.
+1. **Thorben:** Etappe 6 ist laut Bericht erledigt. Offen bleibt der Nachweis, dass die App selbst Port 11434 erreicht (B1). Bitte Protokoll oder Ausgabe senden.
+2. **Thorben:** Etappe 7 ist laut Bericht erledigt. Ein Nachweis fehlt, die Automate-Zeilen in Abschnitt 3 bleiben NICHT GETESTET, bis es einen gibt (Anleitung: `docs/AUTOMATE-SCHNITTSTELLE.md` auf `claude/alpine-verbindungstest`).
+3. **Thorben:** Etappen 8 und 9 sind laut Bericht übersprungen. Für die Preview nicht nötig.
+4. **Claude:** Doku-Stand auf `6c12380` und Gerätebericht in PR #6 eingetragen. Kein Merge, Freigabe durch Thorben steht aus.
+5. **Thorben:** Chat-Tab mit einer echten Frage testen. Installiert wird die Preview-APK `LARA-Test-6c12380.apk`, sofern B11 nichts anderes ergibt. Jeder Build hat derzeit eine eigene Signatur (F10), deshalb vorher die alte Test-App deinstallieren. Das löscht ihre lokalen Daten.
 6. **Vibe:** Unabhängige Abschlussprüfung, Vorführungsanleitung, Liste der bekannten Einschränkungen.
 
-**Für die Preview nicht nötig, bleibt offen:** MCP-Anmeldung und Werkzeuge, Python und Terminal in LARA, Installationen aus LARA, Alpine-App automatisch öffnen, echter Cloud-Chat, echte Automate-Automatisierung, F2, F4, F5. Der Fix für F4 und F5 folgt direkt nach der Preview. Die feste Signatur wartet weiter auf das Secret von Thorben (`docs/FESTE-SIGNATUR.md`).
+**Für die Preview nicht nötig, bleibt offen:** MCP-Anmeldung und Werkzeuge, Python und Terminal in LARA, Installationen aus LARA, Alpine-App automatisch öffnen, echter Cloud-Chat, echte Automate-Automatisierung, F2, F4, F5. Der Fix für F4 und F5 folgt direkt nach der Preview. Die feste Signatur wird nach der Preview gesetzt, bis dahin ist die wechselnde Signatur akzeptiert (E19, B9, `docs/FESTE-SIGNATUR.md`).
 
 **ChatGPT:** Abschnitt 8 prüfen und das Ergebnis in Abschnitt 9 eintragen.
 
 | # | Blockade | Fehlt |
 |---|---|---|
-| B1 | Abschluss von Phase A | Test von Ollama in Alpine (Port 11434) aus dem App-Prozess, mit Gegenprobe |
+| B1 | Abschluss von Phase A | Nachweis, dass der App-Prozess Ollama in Alpine (Port 11434) erreicht, mit Gegenprobe. Etappe 6 ist laut Bericht erledigt, ein Protokoll fehlt |
 | B2 | Python und Terminal (Phase E) | Name der App, die Alpine bereitstellt, und deren Schnittstellen |
 | B3 | Automate (Phase F) | Automate-Version, Klärung der offiziell unterstützten Start-Schnittstelle |
 | B4 | MCP (Phase D) | Welche Software den Endpunkt auf Port 8765 bereitstellt |
 | B5 | App-weite Textfarben (F1) | Freigabe erteilt, Umsetzung läuft |
 | B7 | Claude und ChatGPT in LARA | API-Schlüssel von Thorben, eingegeben nur in der App, und seine Kostenfreigabe für echte Nachrichten |
 | B8 | Name der Alpine-App für das automatische Öffnen aus Etappe 5 | Angabe von Thorben oder vollständige Ausgabe des Terminal-Skripts |
-| B9 | Feste Signatur (F10) | Secret `LARA_CI_KEYSTORE_B64`, eingetragen von Thorben |
+| B9 | Feste Signatur (F10) | Secret `LARA_CI_KEYSTORE_B64`, eingetragen von Thorben, nach der Preview (E19) |
 | B10 | FreeLLMAPI auf einem anderen Gerät | HTTPS auf dem FreeLLMAPI-Server (`docs/FREELLMAPI.md`) |
+| B11 | Preview-APK (F20) | Entscheidung: Bleibt die Preview die APK `6c12380` mit alter Adresse, auf deren Basis die Gerätetests liefen, oder wird sie aus `981b836` gebaut (Platzhalter, ohne Gerätetest)? |
 
 ## 8. Bericht von Claude an ChatGPT
 
@@ -304,6 +345,12 @@ Nur gemeldet, nicht geändert (Regel 8).
 4. Gibt es eine offizielle Quelle für `com.llamalab.automate.intent.action.START_FLOW`?
 
 **09.11.2026, später (Claude):** Preview-Stand ist `6c12380`: 167 Unit-Tests, CI grün, SHA-256 `1f25d7e20cafc6679d63d16ce30dfc9137cb5c1c48cb5a8ab33fde44b477ce7d`. Im Code gelesen und in der APK geprüft: Die nicht dokumentierte Automate-Aktion ist entfernt. Der neue Chat-Client aus `34ea27e` (193 Tests, grün) ist auf Thorbens Korrektur zurückgenommen. Bitte prüfen: Ruft der Chat-Tab wirklich denselben Weg wie Etappe 4 auf, und reicht das für die Preview, solange F4 offen ist? Bei einem eingefrorenen Server kann der Chat-Tab bis etwa vier Minuten hängen.
+
+**09.11.2026, Claude (Doku-Stand nach den Entscheidungen E16 bis E20):** Platzhalter-Adresse für FreeLLMAPI in `981b836`, CI #13 grün, 167 Tests. In der APK geprüft: Die alte Adresse fehlt, der Platzhalter ist enthalten. Die Preview-APK `6c12380` enthält dagegen noch die alte Adresse (F20). Die Abschnitte 2 bis 7 sind angepasst, kein Merge. Bitte prüfen:
+
+1. Stimmen die Gerätetest-Angaben in Abschnitt 3 mit dem Bericht von Thorben überein?
+2. Soll die Preview bei `6c12380` bleiben (E16) oder aus `981b836` gebaut werden (B11)?
+3. Sind die Vorschläge zu F20 und F21 richtig: Die Git-Historie nur mit Freigabe umschreiben, die Adresse mit Port 12434 in einem eigenen PR ersetzen?
 
 ## 9. Bericht von ChatGPT an Claude
 
