@@ -48,10 +48,10 @@ Außerdem:
 | `claude/pc-thorben-setup-i4qwi5` | `512a001` | Baut auf #1 auf: App-Sperre, neues Design, Monitor, Core, Gedächtnis, Übergabeprotokoll | #3 nach #1, Entwurf |
 | `feature/automate-python-bridge` | `6cd8c40` | Bridge Automate ↔ Python auf Port 8765 | #2 nach `main`, Entwurf |
 | `safety/pre-arena-20261105` | `1f5b1f1` | Sicherungsstand | – |
-| `claude/alpine-verbindungstest` | `4c4a194` | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
+| `claude/alpine-verbindungstest` | `64fe56d` | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
 | `claude/projekt-dokumentation` | `9049d5a` | In `main` übernommen, nicht weiterführen (Branch bleibt bestehen) | #4, gemergt als `abd6b38` |
 
-**Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor. Aktuell: `LARA-Test-4c4a194.apk`, Commit `4c4a194`, SHA-256 `651b7bfaefdd7df9cf1103fd9993745171334374dd672227aab428558f107de5`, kein Gerätetest.
+**Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor. Aktuell: `LARA-Test-64fe56d.apk` (privater Entwurf `lara-alpine-test-64fe56d`, Commit `64fe56d`, CI-Lauf #6 grün, 120 Unit-Tests ohne Fehler), Paket `de.laraai.hub.alpinetest`, Größe 18.403.466 Bytes, erstellt 09.11.2026 um 01:27 MEZ, SHA-256 `4214bfe34b2cc343000360dfb77425c007d342a47825f0f50f8746177d7e00f3`, am Gerät getestet: NEIN. Gegenüber `LARA-Test-4c4a194.apk` neu: F18-Fallback auf `/v1/models`, Einrichtungsassistent mit 10 Etappen, app-weite Textfarbe (Details im CHANGELOG vom 09.11.2026). Achtung: Die Signatur ist eine andere als bei `LARA-Test-4c4a194.apk`. Android erlaubt ein Update nur mit gleicher Signatur, deshalb muss die alte Testversion vor der Installation deinstalliert werden. Das löscht lokale Daten (Schlüssel, Chat). Vorgänger: `LARA-Test-4c4a194.apk`, Commit `4c4a194`.
 
 **Zwei verschiedene „Ollama“ auf dem Pixel, nicht verwechseln:**
 
@@ -179,7 +179,7 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 ## 7. Nächste Schritte und Blockaden
 
-1. **Claude:** Textfarbe und Einrichtungsassistent in der Testversion bauen und prüfen (E8).
+1. **Claude:** Textfarbe und Einrichtungsassistent sind in der Testversion `64fe56d` gebaut (CI-Lauf #6). Am Gerät noch nicht geprüft (E8).
 2. **Thorben:** Neue Testversion installieren, den Assistenten durchlaufen und den Bericht senden. Etappe 4 ersetzt den Chat-Test, Etappe 6 den Test von Port 11434. Die Gegenprobe mit beendetem Server bleibt von Hand nötig.
 3. **Thorben:** Die vollständige Ausgabe des Terminal-Befehls aus Abschnitt 10 in den Claude-Chat kopieren. Bisher kamen nur die letzten Zeilen an.
 4. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.

@@ -8,6 +8,22 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-09
 
+### Claude: F18-Testversion 64fe56d als privaten Entwurf dokumentiert
+
+- **Branch und Stand:** `claude/alpine-verbindungstest`, Build-Stand `64fe56d` (enthält `dd3ae0b` und `64fe56d`).
+- **Build:** CI-Lauf #6 (Run-ID `42540090395`) grün; Build- und Entwurfsjob erfolgreich. Paketname `de.laraai.hub.alpinetest` im Manifest gefunden. 120 Unit-Tests, 0 Fehler, 0 übersprungen.
+- **Entwurf:** `lara-alpine-test-64fe56d`, privat (Entwurf, Vorabversion). Datei `LARA-Test-64fe56d.apk`, 18.403.466 Bytes, erstellt 09.11.2026 um 01:27 MEZ.
+- **SHA-256:** `4214bfe34b2cc343000360dfb77425c007d342a47825f0f50f8746177d7e00f3` (lokal berechnet, stimmt mit dem GitHub-Wert überein).
+- **Signatur:** CI-Debug-Zertifikat, SHA-256 `f7d0fff7fc30a0a81fb3fcd4527d9411f58bff0b16f3d76cf1d53103cb265a65` (lokal aus der APK gelesen). Es weicht vom Zertifikat der `LARA-Test-4c4a194.apk` (`b84e63b05af04ff0c197a5255636fb2eb1a0117c33c22d7c5f2c8bac4860a044`) ab. Android verlangt für ein Update dieselbe Signatur. Die alte Testversion muss deshalb vor der Installation deinstalliert werden; das löscht lokale Daten (Schlüssel, Chat). Die dauerhafte Lösung ist als Arbeitspaket A (feste Signatur) geplant.
+- **Gegenüber `LARA-Test-4c4a194.apk` neu:**
+  1. F18-Fix: Liefert `/api/tags` HTTP 200 mit leerer Modellliste, fragt `AlpineProbe` zusätzlich `/v1/models` ab und übernimmt `data[].id` (`dd3ae0b`, Regressionstests in `64fe56d`).
+  2. Einrichtungsassistent mit 10 Etappen (`e90e5a3`; `SetupWizard.kt`, `SetupWizardPage.kt`, `SetupWizardTest.kt`).
+  3. App-weite Textfarbe korrigiert (`e90e5a3`, `LaraTheme.kt`).
+- **Tests:** Die 80 Tests aus `4c4a194` bleiben unverändert; `AlpineProbeTest.kt` wurde nur ergänzt (42 Zeilen), `SetupWizardTest.kt` ist neu. Die im Eintrag von ChatGPT genannten erwarteten 83 Tests sind überholt, weil der Setup-Assistent eigene Tests mitbringt.
+- **Erwartung am Gerät (nicht geprüft):** Der Verbindungstest gegen `127.0.0.1:12434` meldet `qwen2.5-0.5b-instruct-q4_k_m` als gefunden; die Etappen 1 bis 6 des Assistenten sind durchklickbar.
+- **Am Gerät getestet:** NEIN, bis Thorben das Ergebnis einträgt.
+- **Integration:** Kein Merge. Die Änderung liegt auf dem Doku-Branch `docs/f18-testversion-64fe56d`. `main` ist nicht verändert, PR #1, #2 und #3 sind nicht angerührt.
+
 ### ChatGPT: F18 – Fallback auf OpenAI-kompatible Modellliste
 
 - **Branch:** `claude/alpine-verbindungstest`
