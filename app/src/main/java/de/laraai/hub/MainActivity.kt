@@ -18,7 +18,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -35,8 +34,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -323,8 +320,6 @@ private fun LaraHubApp(
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
     val providerMemory = remember { ProviderMemory.shared(context) }
-    val localChat = remember { LocalChatClient() }
-    var localChatApi by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
     var automateConfirmation by remember { mutableStateOf<AutomateRequest?>(null) }
     var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
     var providerMenuExpanded by remember { mutableStateOf(false) }
@@ -408,11 +403,7 @@ private fun LaraHubApp(
         status = "Prüfe ${selectedProvider.label} und suche verfügbare Modelle …"
         scope.launch {
             try {
-                val result = if (selectedProvider == AiProvider.OLLAMA) {
-                    withContext(Dispatchers.IO) { localChat.models(endpoint) }
-                } else {
-                    ApiConnection.discover(context, selectedProvider, endpoint)
-                }
+                val result = ApiConnection.discover(context, selectedProvider, endpoint)
                 apiMode = result.mode
                 availableModels = result.models
                 if (model.isBlank() || (result.models.isNotEmpty() && model !in result.models)) {
@@ -535,25 +526,11 @@ private fun LaraHubApp(
                             }
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
-                        if (selectedProvider == AiProvider.OLLAMA) {
-                            TextButton(
-                                onClick = {
-                                    localChatApi = if (localChatApi == ApiMode.OPENAI_COMPATIBLE) ApiMode.OLLAMA_NATIVE else ApiMode.OPENAI_COMPATIBLE
-                                },
-                                enabled = !busy
-                            ) { Text("Schnittstelle: ${LocalChatClient.pathOf(localChatApi)} (antippen zum Wechseln)") }
-                        }
-                        val chatListState = rememberLazyListState()
-                        val shownLines = lines.takeLast(80)
-                        LaunchedEffect(lines.size) {
-                            if (shownLines.isNotEmpty()) chatListState.scrollToItem(shownLines.lastIndex)
-                        }
                         LazyColumn(
                             Modifier.weight(1f).fillMaxWidth(),
-                            state = chatListState,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(shownLines) { entry ->
+                            items(lines.takeLast(80)) { entry ->
                                 val mine = entry.role == "Du"
                                 GlassCard(
                                     Modifier.fillMaxWidth().padding(start = if (mine) 32.dp else 0.dp, end = if (mine) 0.dp else 32.dp),
@@ -591,22 +568,6 @@ private fun LaraHubApp(
                                     status = "Verbinde und sende Anfrage …"
                                     scope.launch {
                                         try {
-                                            if (selectedProvider == AiProvider.OLLAMA) {
-                                                val chosen = model.ifBlank { LocalChatClient.DEFAULT_MODEL }
-                                                status = "Sende an ${endpoint.trim()} · ${LocalChatClient.pathOf(localChatApi)} …"
-                                                val reply = withContext(Dispatchers.IO) {
-                                                    localChat.send(endpoint, chosen, localChatApi, history, question)
-                                                }
-                                                if (model.isBlank()) model = chosen
-                                                persistConfig()
-                                                addMessage("LARA / $chosen", reply.text)
-                                                reply.usage?.let {
-                                                    UsageLog.add(context, it)
-                                                    usageEntries = UsageLog.load(context)
-                                                }
-                                                status = "Antwort erhalten · Ollama"
-                                                return@launch
-                                            }
                                             val discovery = ApiConnection.discover(context, selectedProvider, endpoint)
                                             apiMode = discovery.mode
                                             if (availableModels != discovery.models) availableModels = discovery.models
@@ -633,7 +594,6 @@ private fun LaraHubApp(
                                             status = "Antwort erhalten · $apiLabel"
                                         } catch (e: Exception) {
                                             status = "Fehler – " + ProviderErrors.describe(selectedProvider.label, e)
-                                            if (e is LocalChatException) addMessage("Hinweis", e.message.orEmpty())
                                         } finally {
                                             busy = false
                                         }
