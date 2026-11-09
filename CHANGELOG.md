@@ -8,6 +8,22 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-09
 
+### Claude: Preview-Stand 6c12380, Automate-Aktion entfernt (Branch, kein Merge)
+
+| Angabe | Wert |
+|---|---|
+| Datei | `LARA-Preview-6c12380.apk` |
+| Commit | `6c12380` auf `claude/alpine-verbindungstest` |
+| SHA-256 | `1f25d7e20cafc6679d63d16ce30dfc9137cb5c1c48cb5a8ab33fde44b477ce7d` (aus der APK nachgerechnet, stimmt mit dem GitHub-Wert überein) |
+| Größe | 18.419.942 Bytes |
+| CI-Lauf | Android branch check #12 (Run-ID `42597721597`), grün; 167 Unit-Tests, 0 Fehler, Tests unverändert |
+| Am Gerät getestet | NEIN |
+
+- **Entfernt (E14):** die nicht dokumentierte Automate-Aktion, das Feld für die Flow-Adresse und der Autostart. In der APK geprüft: Die Aktion kommt im Code nicht mehr vor.
+- **Zurückgenommen (E15):** Der neue Chat-Client aus `34ea27e` (193 Tests, grün). F2, F4 und F5 bleiben offen.
+- **Release-Entwurf:** `lara-alpine-test-6c12380` enthält dieselbe Datei als `LARA-Test-6c12380.apk`. Einen Entwurf mit dem Preview-Namen hat GitHub für die Claude-Sitzung abgelehnt (HTTP 403).
+- **Regel (E10):** Änderungen an `main` nur noch über Pull Requests mit Thorbens Freigabe.
+
 ### Claude: Paket A, FreeLLMAPI, Eingaben merken und Automate (Branch, kein Merge)
 
 Alles auf `claude/alpine-verbindungstest`. Android branch check #10 (Run-ID `42588759747`) grün: 167 Unit-Tests, 0 Fehler, 120 bestehende unverändert. Am Gerät getestet: NEIN.
