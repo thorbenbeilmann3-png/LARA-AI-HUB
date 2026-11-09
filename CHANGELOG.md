@@ -8,6 +8,19 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-09
 
+### Claude: Paket A, FreeLLMAPI, Eingaben merken und Automate (Branch, kein Merge)
+
+Alles auf `claude/alpine-verbindungstest`. Android branch check #10 (Run-ID `42588759747`) grün: 167 Unit-Tests, 0 Fehler, 120 bestehende unverändert. Am Gerät getestet: NEIN.
+
+| Paket | Commits | Umgesetzt | Offen | Braucht Thorben |
+|---|---|---|---|---|
+| A: feste CI-Signatur (F10, F17) | `f62e983`, `0264d96`, `ba631d8` | Secret `LARA_CI_KEYSTORE_B64` wird Build-Signatur, ohne Secret weiter Debug-Signatur. 77 Skript-Prüfungen, Beweis mit echten Builds (Run `42586874287`). Anleitung `docs/FESTE-SIGNATUR.md` | Echtes Secret, Update am Pixel | Secret eintragen |
+| FreeLLMAPI | `c57ef92` | Anbieter mit Standard-Adresse, Test nur `GET /v1/models`, Schlüssel optional im ApiKeyStore, keine LAN-Ausnahme. 11 Tests. Anleitung `docs/FREELLMAPI.md` | Echter Server, HTTPS | HTTPS auf dem Server, falls gewünscht |
+| Eingaben merken | `c57ef92` | Adresse, Modell und MCP-Adresse pro Anbieter in den App-Einstellungen, nie Schlüssel. 12 Tests | Anzeige am Pixel | – |
+| Automate (F8, F9) | `0f3aaa7` | LARA-Aktion `de.laraai.hub.action.START_FLOW`, Extras `anbieter` und `aktion`, Bestätigung bei kostenpflichtigen Anbietern, höchstens ein automatischer Start pro Minute. 24 Tests. Anleitung `docs/AUTOMATE-SCHNITTSTELLE.md` | Echter Flow am Pixel | Darf die nicht dokumentierte Automate-Aktion bleiben? |
+
+Neue Testversion: `LARA-Test-0f3aaa7.apk`, SHA-256 `5251df37590611cc0fe1bcd0d34482220b58abd2c770e73ae1865ddbeaf0f37f`, 18.419.942 Bytes.
+
 ### Claude: F18-Testversion 64fe56d dokumentiert
 
 | Angabe | Wert |
