@@ -29,11 +29,11 @@ trap 'rm -rf "$tmp"' EXIT
 
 # P-256 statt RSA: Der Text wird deutlich kuerzer und passt beim Kopieren
 # auf einen Handybildschirm. LARA braucht mindestens Android 8 (minSdk 26).
-openssl ecparam -name prime256v1 -genkey -noout -out "$tmp/key.pem" 2>/dev/null
+openssl ecparam -name prime256v1 -genkey -noout -out "$tmp/key.pem"
 openssl req -new -x509 -sha256 -key "$tmp/key.pem" -days 10950 \
-    -subj "/CN=LARA Test/O=LARA AI HUB/C=DE" -out "$tmp/cert.pem" 2>/dev/null
+    -subj "/CN=LARA Test/O=LARA AI HUB/C=DE" -out "$tmp/cert.pem"
 openssl pkcs12 -export -inkey "$tmp/key.pem" -in "$tmp/cert.pem" \
-    -name androiddebugkey -passout pass:android -out "$tmp/ks.p12" 2>/dev/null
+    -name androiddebugkey -passout pass:android -out "$tmp/ks.p12"
 openssl base64 -A -in "$tmp/ks.p12" -out "$tmp/ks.b64"
 
 cert=$(openssl x509 -in "$tmp/cert.pem" -noout -fingerprint -sha256 \
