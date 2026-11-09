@@ -66,6 +66,7 @@ class MainActivity : FragmentActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private var pendingSuccess: (() -> Unit)? = null
     private var pendingFailure: ((String) -> Unit)? = null
+    private var automateDecision by mutableStateOf<AutomateDecision?>(null)
 
     private val authenticators: Int get() = laraAuthenticators()
 
@@ -87,6 +88,8 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A rebuilt screen gets the old intent again; only a real start counts.
+        if (savedInstanceState == null) receiveAutomateIntent(intent)
         biometricPrompt = BiometricPrompt(
             this,
             ContextCompat.getMainExecutor(this),
@@ -121,9 +124,31 @@ class MainActivity : FragmentActivity() {
                     }
                 )
             } else {
-                LaraHubApp(requester, startupNotice = lockMessage)
+                LaraHubApp(
+                    requester,
+                    startupNotice = lockMessage,
+                    automateDecision = automateDecision,
+                    onAutomateHandled = { automateDecision = null }
+                )
             }
         } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        receiveAutomateIntent(intent)
+    }
+
+    private fun receiveAutomateIntent(incoming: Intent?) {
+        if (incoming?.action != AutomateStartInterface.ACTION) return
+        // The extras come from another app: a broken parcel must not crash LARA.
+        val extras = runCatching {
+            incoming.getStringExtra(AutomateStartInterface.EXTRA_PROVIDER) to
+                incoming.getStringExtra(AutomateStartInterface.EXTRA_ACTION)
+        }.getOrDefault(null to null)
+        val decision = AutomateStartInterface.parse(incoming.action, extras.first, extras.second)
+        automateDecision = AutomateGate.shared(this).screen(decision)
     }
 
     private fun unlockSession() {
@@ -305,10 +330,16 @@ private fun openAutomate(context: Context, flowUri: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
+private fun LaraHubApp(
+    auth: AuthRequester,
+    startupNotice: String?,
+    automateDecision: AutomateDecision?,
+    onAutomateHandled: () -> Unit
+) {
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
     val providerMemory = remember { ProviderMemory.shared(context) }
+    var automateConfirmation by remember { mutableStateOf<AutomateRequest?>(null) }
     var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
     var providerMenuExpanded by remember { mutableStateOf(false) }
     var endpoint by remember { mutableStateOf(initialConfig.endpoint) }
@@ -411,10 +442,42 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
         }
     }
 
+    fun runAutomateRequest(request: AutomateRequest) {
+        request.provider?.let { if (it != selectedProvider) selectProvider(it) }
+        when (request.action) {
+            AutomateAction.CHAT -> {
+                selectedTab = 0
+                status = "Automate: Chat mit ${selectedProvider.label} geöffnet."
+            }
+            AutomateAction.CONNECTION_TEST -> {
+                selectedTab = 3
+                checkConnection()
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (autoStartAutomate && automateFlowUri.isNotBlank()) {
-            status = openAutomate(context, automateFlowUri)
+            when (AutomateGate.shared(context).autostart()) {
+                AutostartDecision.START -> { status = openAutomate(context, automateFlowUri) }
+                AutostartDecision.RATE_LIMITED -> { status = "Automate-Autostart übersprungen: höchstens ein Start pro Minute." }
+                AutostartDecision.ALREADY_DONE -> Unit
+            }
         }
+    }
+
+    LaunchedEffect(automateDecision) {
+        when (val decision = automateDecision) {
+            null, AutomateDecision.NotForAutomate -> Unit
+            is AutomateDecision.Rejected -> { status = decision.reason }
+            is AutomateDecision.Accepted ->
+                if (AutomateStartInterface.needsConfirmation(decision.request, selectedProvider)) {
+                    automateConfirmation = decision.request
+                } else {
+                    runAutomateRequest(decision.request)
+                }
+        }
+        if (automateDecision != null) onAutomateHandled()
     }
 
     run {
@@ -821,6 +884,31 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                 }
             }
         }
+    }
+
+    automateConfirmation?.let { request ->
+        val target = request.provider ?: selectedProvider
+        val decline = {
+            automateConfirmation = null
+            status = "Automate-Anfrage nicht bestätigt. Es wurde nichts geändert."
+        }
+        AlertDialog(
+            onDismissRequest = decline,
+            title = { Text("Automate-Anfrage bestätigen") },
+            text = {
+                Text(
+                    "Automate möchte ${target.label} nutzen. Bei diesem Anbieter können Kosten entstehen. " +
+                        "Mit dem Erlauben wird noch keine Nachricht gesendet."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    automateConfirmation = null
+                    runAutomateRequest(request)
+                }) { Text("Erlauben") }
+            },
+            dismissButton = { TextButton(onClick = decline) { Text("Ablehnen") } }
+        )
     }
 
     if (showModelPicker) {
