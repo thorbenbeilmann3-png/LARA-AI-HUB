@@ -134,6 +134,11 @@ internal class OkHttpProbeTransport(
  * message. A positive result proves reachability of these addresses from this app,
  * nothing about chat, MCP login, Python or the terminal. Every step is bounded by the
  * transport limits, so a frozen server cannot block the test for minutes.
+ *
+ * F18 fix: some local services answer /api/version like Ollama but keep their model
+ * list only on the OpenAI-compatible /v1/models endpoint (observed on port 12434,
+ * where /api/tags is empty). When /api/tags answers with an empty list, the probe
+ * additionally reads /v1/models instead of reporting a false "model missing".
  */
 internal class AlpineProbe(
     private val transport: ProbeTransport,
@@ -144,6 +149,7 @@ internal class AlpineProbe(
         val wanted = expectedModel.trim()
         var version: String? = null
         var models: List<String>? = null
+        var tagsEmpty = false
 
         val versionStep = check("Ollama-Version", "$base$VERSION_PATH", VERSION_PATH, readBody = true) { response ->
             if (response.code != 200) {
@@ -170,6 +176,7 @@ internal class AlpineProbe(
                         textField(item, "name") ?: textField(item, "model")
                     }.take(MAX_MODELS)
                     models = names
+                    if (names.isEmpty()) tagsEmpty = true
                     val mark = when {
                         wanted.isEmpty() -> ""
                         hasModel(names, wanted) -> " · $wanted gefunden"
@@ -178,6 +185,32 @@ internal class AlpineProbe(
                     ProbeResult.OK to "${names.size} Modell(e)$mark"
                 }
             }
+        }
+
+        // F18: only when /api/tags was readable but empty does the OpenAI-compatible
+        // model list get a chance. Otherwise the old, smaller test stays untouched.
+        val modelsStep: ProbeStep? = if (tagsEmpty) {
+            check("Modelle (OpenAI-Schnittstelle)", "$base$MODELS_PATH", MODELS_PATH, readBody = true) { response ->
+                val data = if (response.code == 200) parseObject(response.body)?.optJSONArray("data") else null
+                when {
+                    response.code != 200 -> ProbeResult.HTTP_ERROR to httpErrorText(response.code)
+                    data == null -> ProbeResult.BAD_RESPONSE to "Die Antwort enthält keine Modellliste."
+                    else -> {
+                        val names = (0 until data.length()).mapNotNull { index ->
+                            textField(data.optJSONObject(index), "id")
+                        }.take(MAX_MODELS)
+                        if (names.isNotEmpty()) models = names
+                        val mark = when {
+                            wanted.isEmpty() -> ""
+                            hasModel(names, wanted) -> " · $wanted gefunden"
+                            else -> " · $wanted NICHT gefunden"
+                        }
+                        ProbeResult.OK to "${names.size} Modell(e) über /v1/models$mark"
+                    }
+                }
+            }
+        } else {
+            null
         }
 
         val mcpStep = check("MCP-Endpunkt ohne Anmeldung", mcpUrl.trim(), MCP_PATH, readBody = false) { response ->
@@ -192,7 +225,7 @@ internal class AlpineProbe(
 
         val names = models
         return ProbeReport(
-            steps = listOf(versionStep, tagsStep, mcpStep),
+            steps = listOf(versionStep, tagsStep) + listOfNotNull(modelsStep) + listOf(mcpStep),
             ollamaVersion = version,
             models = names.orEmpty(),
             expectedModel = wanted,
@@ -249,6 +282,7 @@ internal class AlpineProbe(
         const val DEFAULT_MODEL = "qwen2.5:0.5b"
         private const val VERSION_PATH = "/api/version"
         private const val TAGS_PATH = "/api/tags"
+        private const val MODELS_PATH = "/v1/models"
         private const val MCP_PATH = "/mcp"
         private const val MAX_MODELS = 200
         private val VERSION_SHAPE = Regex("""\d+\.\d+(\.\d+)?([-+.][0-9A-Za-z.+-]*)?""")
