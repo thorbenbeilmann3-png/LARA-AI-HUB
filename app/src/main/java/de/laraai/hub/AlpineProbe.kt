@@ -180,6 +180,34 @@ internal class AlpineProbe(
             }
         }
 
+        val modelSteps = mutableListOf(tagsStep)
+        // Some OpenAI-compatible local servers expose models only through /v1/models.
+        // Try that endpoint only when /api/tags was readable and explicitly empty.
+        if (tagsStep.httpCode == 200 && models?.isEmpty() == true) {
+            val openAiModelsStep = check(
+                "OpenAI-Modellliste",
+                "$base$OPENAI_MODELS_PATH",
+                OPENAI_MODELS_PATH,
+                readBody = true
+            ) { response ->
+                if (response.code != 200) {
+                    ProbeResult.HTTP_ERROR to httpErrorText(response.code)
+                } else {
+                    val list = parseObject(response.body)?.optJSONArray("data")
+                    if (list == null) {
+                        ProbeResult.BAD_RESPONSE to "Die Antwort von /v1/models enthält keine Modellliste."
+                    } else {
+                        val names = (0 until list.length()).mapNotNull { index ->
+                            textField(list.optJSONObject(index), "id")
+                        }.take(MAX_MODELS)
+                        models = names
+                        ProbeResult.OK to "${names.size} Modell(e) aus /v1/models"
+                    }
+                }
+            }
+            modelSteps.add(openAiModelsStep)
+        }
+
         val mcpStep = check("MCP-Endpunkt ohne Anmeldung", mcpUrl.trim(), MCP_PATH, readBody = false) { response ->
             when (response.code) {
                 401 -> ProbeResult.AUTH_REQUIRED to "Ein Dienst antwortet und verlangt Anmeldung (HTTP 401). " +
@@ -192,7 +220,7 @@ internal class AlpineProbe(
 
         val names = models
         return ProbeReport(
-            steps = listOf(versionStep, tagsStep, mcpStep),
+            steps = listOf(versionStep) + modelSteps + mcpStep,
             ollamaVersion = version,
             models = names.orEmpty(),
             expectedModel = wanted,
@@ -249,6 +277,7 @@ internal class AlpineProbe(
         const val DEFAULT_MODEL = "qwen2.5:0.5b"
         private const val VERSION_PATH = "/api/version"
         private const val TAGS_PATH = "/api/tags"
+        private const val OPENAI_MODELS_PATH = "/v1/models"
         private const val MCP_PATH = "/mcp"
         private const val MAX_MODELS = 200
         private val VERSION_SHAPE = Regex("""\d+\.\d+(\.\d+)?([-+.][0-9A-Za-z.+-]*)?""")
