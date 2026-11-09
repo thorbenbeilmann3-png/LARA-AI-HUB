@@ -25,7 +25,14 @@ internal enum class AiProvider(
     OPENROUTER("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", true),
     CEREBRAS("cerebras", "Cerebras", "https://api.cerebras.ai/v1", true),
     OPENCLAW("openclaw", "OpenClaw · Gateway", "", true),
+    FREELLMAPI("freellmapi", "FreeLLMAPI", "http://192.168.178.21:3001/v1", false),
     CUSTOM("custom", "Eigener OpenAI-kompatibler Server", "", false);
+
+    /** A key may be stored for this provider, in ApiKeyStore only. */
+    val acceptsApiKey: Boolean get() = requiresApiKey || this == CUSTOM || this == FREELLMAPI
+
+    /** Only these are known not to bill per request; everything else counts as possibly paid. */
+    val isFreeToUse: Boolean get() = this == OLLAMA || this == FREELLMAPI
 
     companion object {
         fun fromId(id: String): AiProvider =
@@ -78,7 +85,11 @@ internal object ApiConnection {
         if (provider == AiProvider.OLLAMA) {
             return@withContext discoverOllama(root, apiKey)
         }
+        listModels(root, provider, apiKey)
+    }
 
+    /** The connection test of a provider: reads the model list and nothing else. */
+    internal fun listModels(root: String, provider: AiProvider, apiKey: String?): ApiDiscovery {
         val request = Request.Builder()
             .url(modelListUrl(root, provider))
             .get()
@@ -102,7 +113,7 @@ internal object ApiConnection {
             AiProvider.GEMINI -> parseGeminiModels(response)
             else -> parseIdModels(response)
         }
-        ApiDiscovery(ApiMode.OPENAI_COMPATIBLE, models)
+        return ApiDiscovery(ApiMode.OPENAI_COMPATIBLE, models)
     }
 
     // Preserve the original single-endpoint behavior and legacy credential.
@@ -144,6 +155,7 @@ internal object ApiConnection {
             AiProvider.OPENROUTER,
             AiProvider.CEREBRAS,
             AiProvider.OPENCLAW,
+            AiProvider.FREELLMAPI,
             AiProvider.CUSTOM -> openAiCompatibleChatRequest(
                 root, apiKey, model, prompt, provider, conversationId, history
             )
@@ -364,22 +376,24 @@ internal object ApiConnection {
         provider: AiProvider,
         root: String
     ): String? {
-        if (!provider.requiresApiKey && provider != AiProvider.CUSTOM) return null
+        if (!provider.acceptsApiKey) return null
         val key = ApiKeyStore.load(context, provider.id)
             ?: if (provider == AiProvider.CUSTOM) ApiKeyStore.load(context) else null
         if (provider.requiresApiKey && key.isNullOrBlank()) {
             val credentialName = if (provider == AiProvider.OPENCLAW) "Gateway Token" else "API-Schlüssel"
             error("Für ${provider.label} ist noch kein $credentialName gespeichert.")
         }
-        if (
-            !key.isNullOrBlank() &&
-            !root.startsWith("https://", ignoreCase = true) &&
-            !(provider == AiProvider.OPENCLAW && isPrivateGatewayEndpoint(root))
-        ) {
+        if (!key.isNullOrBlank() && !mayCarryCredentials(provider, root)) {
             error("Zugangsdaten werden nur über HTTPS übertragen. Für OpenClaw ist HTTP ausschließlich im privaten LAN oder auf localhost erlaubt.")
         }
         return key
     }
+
+    /** FreeLLMAPI may use plain HTTP for its key only on this phone, never across the network. */
+    internal fun mayCarryCredentials(provider: AiProvider, root: String): Boolean =
+        root.startsWith("https://", ignoreCase = true) ||
+            (provider == AiProvider.OPENCLAW && isPrivateGatewayEndpoint(root)) ||
+            (provider == AiProvider.FREELLMAPI && CleartextPolicy.isAllowed(root))
 
     private fun isPrivateGatewayEndpoint(endpoint: String): Boolean {
         val host = runCatching { java.net.URI(endpoint).host?.lowercase() }.getOrNull() ?: return false
@@ -409,7 +423,7 @@ internal object ApiConnection {
         }
     }
 
-    private fun rootUrl(endpoint: String, provider: AiProvider): String {
+    internal fun rootUrl(endpoint: String, provider: AiProvider): String {
         val value = endpoint.trim().trimEnd('/')
         require(value.startsWith("http://", true) || value.startsWith("https://", true)) {
             "Bitte eine gültige HTTP- oder HTTPS-Adresse eingeben."
@@ -455,6 +469,7 @@ internal fun providerHeaders(provider: AiProvider, apiKey: String?): List<Pair<S
     AiProvider.OPENROUTER,
     AiProvider.CEREBRAS,
     AiProvider.OPENCLAW,
+    AiProvider.FREELLMAPI,
     AiProvider.CUSTOM -> if (!apiKey.isNullOrBlank()) listOf("Authorization" to "Bearer $apiKey") else emptyList()
     AiProvider.OLLAMA -> emptyList()
 }

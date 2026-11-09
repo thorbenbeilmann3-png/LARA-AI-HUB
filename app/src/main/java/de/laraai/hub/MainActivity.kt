@@ -308,6 +308,7 @@ private fun openAutomate(context: Context, flowUri: String): String {
 private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
+    val providerMemory = remember { ProviderMemory.shared(context) }
     var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
     var providerMenuExpanded by remember { mutableStateOf(false) }
     var endpoint by remember { mutableStateOf(initialConfig.endpoint) }
@@ -324,7 +325,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                 initialKeySaved -> "Zugangsdaten sind verschlüsselt auf diesem Gerät gespeichert."
                 selectedProvider == AiProvider.OPENCLAW -> "Für das OpenClaw-Gateway wird ein Gateway Token benötigt."
                 selectedProvider.requiresApiKey -> "Für diesen Anbieter muss ein API-Schlüssel gespeichert werden."
-                selectedProvider == AiProvider.CUSTOM -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
+                selectedProvider.acceptsApiKey -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
                 else -> "Ollama benötigt normalerweise keinen API-Schlüssel."
             }
         )
@@ -355,6 +356,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
 
     fun persistConfig() {
         saveConfig(context, selectedProvider.id, endpoint, model, automateFlowUri, autoStartAutomate)
+        providerMemory.remember(selectedProvider.id, address = endpoint, model = model)
     }
 
     fun refreshCredentialStatus(provider: AiProvider) {
@@ -365,14 +367,27 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
             saved -> "Zugangsdaten sind verschlüsselt auf diesem Gerät gespeichert."
             provider == AiProvider.OPENCLAW -> "Für das OpenClaw-Gateway wird ein Gateway Token benötigt."
             provider.requiresApiKey -> "Für diesen Anbieter muss ein API-Schlüssel gespeichert werden."
-            provider == AiProvider.CUSTOM -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
+            provider.acceptsApiKey -> "Ein API-Schlüssel ist optional; falls gesetzt, wird er verschlüsselt gespeichert."
             else -> "Ollama benötigt normalerweise keinen API-Schlüssel."
         }
+    }
+
+    fun selectProvider(provider: AiProvider) {
+        val remembered = providerMemory.load(provider.id)
+        selectedProvider = provider
+        endpoint = remembered.address ?: provider.defaultEndpoint
+        model = remembered.model.orEmpty()
+        apiKeyInput = ""
+        availableModels = emptyList()
+        refreshCredentialStatus(provider)
+        saveConfig(context, provider.id, endpoint, model, automateFlowUri, autoStartAutomate)
+        status = "${provider.label} ausgewählt. Bitte Verbindung testen."
     }
 
     fun checkConnection() {
         if (checking || busy) return
         checking = true
+        providerMemory.remember(selectedProvider.id, address = endpoint, model = model)
         status = "Prüfe ${selectedProvider.label} und suche verfügbare Modelle …"
         scope.launch {
             try {
@@ -641,23 +656,7 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                                         text = { Text(provider.label) },
                                         onClick = {
                                             providerMenuExpanded = false
-                                            if (provider != selectedProvider) {
-                                                selectedProvider = provider
-                                                endpoint = provider.defaultEndpoint
-                                                model = ""
-                                                apiKeyInput = ""
-                                                availableModels = emptyList()
-                                                refreshCredentialStatus(provider)
-                                                saveConfig(
-                                                    context,
-                                                    provider.id,
-                                                    endpoint,
-                                                    model,
-                                                    automateFlowUri,
-                                                    autoStartAutomate
-                                                )
-                                                status = "${provider.label} ausgewählt. Bitte Verbindung testen."
-                                            }
+                                            if (provider != selectedProvider) selectProvider(provider)
                                         }
                                     )
                                 }
@@ -701,8 +700,11 @@ private fun LaraHubApp(auth: AuthRequester, startupNotice: String?) {
                             }
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
+                        ProviderNotes.forProvider(selectedProvider)?.let { note ->
+                            Text(note, style = MaterialTheme.typography.bodySmall, color = LaraColors.Warn)
+                        }
                         HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
-                        if (selectedProvider.requiresApiKey || selectedProvider == AiProvider.CUSTOM) {
+                        if (selectedProvider.acceptsApiKey) {
                             Text(
                                 if (selectedProvider == AiProvider.OPENCLAW) "Gateway Token · OpenClaw"
                                 else "API-Schlüssel · ${selectedProvider.label}",

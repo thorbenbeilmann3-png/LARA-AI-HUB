@@ -27,10 +27,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val CONFIG = "lara_hub_config"
-private const val KEY_OLLAMA = "alpine_probe_ollama_url"
-private const val KEY_MCP = "alpine_probe_mcp_url"
-private const val KEY_MODEL = "alpine_probe_model"
+// Its own entry: Ollama in Alpine (11434) is not the local server on 12434 used for chat.
+private const val MEMORY_ID = "ollama_alpine"
 
 internal fun probeEnvironment(context: Context) = ProbeEnvironment(
     packageName = context.packageName,
@@ -53,12 +51,13 @@ private fun colorFor(result: ProbeResult): Color = when (result) {
 /** Runs the connection test inside this app process and shows only what was observed. */
 @Composable
 internal fun AlpineProbeCard(context: Context) {
-    val prefs = remember { context.getSharedPreferences(CONFIG, Context.MODE_PRIVATE) }
+    val memory = remember { ProviderMemory.shared(context) }
+    val remembered = remember { memory.load(MEMORY_ID) }
     val probe = remember { AlpineProbe(OkHttpProbeTransport()) }
     val scope = rememberCoroutineScope()
-    var ollamaUrl by remember { mutableStateOf(prefs.getString(KEY_OLLAMA, null) ?: AlpineProbe.DEFAULT_OLLAMA_URL) }
-    var mcpUrl by remember { mutableStateOf(prefs.getString(KEY_MCP, null) ?: AlpineProbe.DEFAULT_MCP_URL) }
-    var expectedModel by remember { mutableStateOf(prefs.getString(KEY_MODEL, null) ?: AlpineProbe.DEFAULT_MODEL) }
+    var ollamaUrl by remember { mutableStateOf(remembered.address ?: AlpineProbe.DEFAULT_OLLAMA_URL) }
+    var mcpUrl by remember { mutableStateOf(remembered.mcp ?: AlpineProbe.DEFAULT_MCP_URL) }
+    var expectedModel by remember { mutableStateOf(remembered.model ?: AlpineProbe.DEFAULT_MODEL) }
     var running by remember { mutableStateOf(false) }
     var report by remember { mutableStateOf<ProbeReport?>(null) }
     var reportTime by remember { mutableStateOf("") }
@@ -70,11 +69,12 @@ internal fun AlpineProbeCard(context: Context) {
         copied = false
         report = null
         // Only clean addresses are kept: a mistyped token must not end up in plain-text settings.
-        prefs.edit().apply {
-            if (AlpineProbe.ollamaAddressProblem(ollamaUrl) == null) putString(KEY_OLLAMA, ollamaUrl.trim())
-            if (AlpineProbe.mcpAddressProblem(mcpUrl) == null) putString(KEY_MCP, mcpUrl.trim())
-            putString(KEY_MODEL, expectedModel.trim())
-        }.apply()
+        memory.remember(
+            MEMORY_ID,
+            address = ollamaUrl.takeIf { AlpineProbe.ollamaAddressProblem(it) == null },
+            model = expectedModel,
+            mcp = mcpUrl.takeIf { AlpineProbe.mcpAddressProblem(it) == null }
+        )
         scope.launch {
             try {
                 val result = withContext(Dispatchers.IO) { probe.run(ollamaUrl, mcpUrl, expectedModel) }

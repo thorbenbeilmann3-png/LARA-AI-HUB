@@ -179,7 +179,7 @@ private fun ProviderStatusCard(context: Context) {
                             onClick = {
                                 val saved = prefs.getString("endpoint", "") ?: ""
                                 val endpoint = if (prefs.getString("provider_id", "") == provider.id && saved.isNotBlank()) saved
-                                    else provider.defaultEndpoint
+                                    else ProviderMemory.shared(context).load(provider.id).address ?: provider.defaultEndpoint
                                 running = provider.id
                                 scope.launch {
                                     val now = System.currentTimeMillis()
