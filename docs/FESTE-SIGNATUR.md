@@ -13,7 +13,7 @@ Bisher bekam jeder GitHub-Build ein anderes Zertifikat. Android lässt ein Updat
 **Schritt 1: Schlüssel erzeugen.** Im Alpine-Terminal einfügen:
 
 ```sh
-apk add --no-cache openssl && curl -fsSL https://raw.githubusercontent.com/thorbenbeilmann3-png/LARA-AI-HUB/f62e983f17c7d4e541a635e8d9f9150c6eee8f6f/tools/erzeuge-lara-signatur.sh | sh
+apk add --no-cache openssl && curl -fsSL https://raw.githubusercontent.com/thorbenbeilmann3-png/LARA-AI-HUB/ba631d897dee30135fde72fcf7a1045015910250/tools/erzeuge-lara-signatur.sh | sh
 ```
 
 Die Ausgabe enthält nur den öffentlichen Fingerabdruck und darf in den Chat. So kann Claude später prüfen, ob der richtige Schlüssel benutzt wird.
@@ -66,7 +66,7 @@ Die Notiz am Release-Entwurf nennt das Zertifikat und ob die Signatur fest oder 
 
 ## Installationsfehler „App konnte nicht installiert werden“ (F17)
 
-**Belegt:** Sechs geprüfte Testbuilds trugen unterschiedliche Zertifikate, unter anderem `b84e63b0…` (`4c4a194`) und `f7d0fff7…` (`64fe56d`). Android vergleicht beim Update die Zertifikate und lässt es nur bei Übereinstimmung zu ([Android](https://developer.android.com/studio/publish/app-signing)). Eine neue Testversion lässt sich darum nicht über eine ältere installieren.
+**Belegt:** Neun geprüfte Testbuilds trugen neun verschiedene Zertifikate, unter anderem `b84e63b0…` (`4c4a194`) und `f7d0fff7…` (`64fe56d`). Android vergleicht beim Update die Zertifikate und lässt es nur bei Übereinstimmung zu ([Android](https://developer.android.com/studio/publish/app-signing)). Eine neue Testversion lässt sich darum nicht über eine ältere installieren.
 
 **Nicht belegt:** Ob genau das die Ursache der Meldung vom 08.11., 22:20 Uhr, war. Welche Datei damals installiert werden sollte, ist nicht bekannt. Zwei Minuten später meldete Thorben einen Browser-Fehler beim Herunterladen einer anderen APK, es kann also auch um eine andere Datei gegangen sein. `LARA-Test-4c4a194.apk` ließ sich danach installieren. F17 bleibt deshalb „Ursache wahrscheinlich, nicht bewiesen“.
 
@@ -80,9 +80,10 @@ Die Notiz am Release-Entwurf nennt das Zertifikat und ob die Signatur fest oder 
 
 | Prüfung | Stand |
 |---|---|
-| Skript-Tests `tools/ci/test-signing.sh` | Lokal PASS: 70 Prüfungen unter `dash` und `bash --posix`, 13 absichtlich eingebaute Fehler erkannt. CI: Ergebnis steht aus |
-| Zwei echte Builds, gleicher Schlüssel, gleiches Zertifikat | Ergebnis steht aus |
-| Build ohne Secret läuft weiter | Ergebnis steht aus |
+| Skript-Tests `tools/ci/test-signing.sh` | PASS: 77 Prüfungen in CI (Java 17, `ba631d8`) und lokal unter `dash`; alle 15 absichtlich eingebauten Fehler erkannt |
+| Zwei echte Builds, gleicher Schlüssel, gleiches Zertifikat | PASS in CI (`ba631d8`), mit einem Wegwerf-Schlüssel |
+| Build ohne diesen Schlüssel bekommt ein anderes Zertifikat | PASS in CI (`ba631d8`) |
+| Build ohne Secret läuft weiter | PASS in CI (`ba631d8`), 120 Unit-Tests grün |
 | Build mit echtem Secret | NICHT GETESTET (Secret noch nicht eingetragen) |
 | Schritte 1 und 2 im Alpine-Terminal | NICHT GETESTET |
 | Update ohne Deinstallation am Pixel | NICHT GETESTET |
