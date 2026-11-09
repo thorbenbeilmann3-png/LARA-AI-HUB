@@ -54,5 +54,5 @@ LARA merkt sich pro Anbieter die zuletzt genutzte Adresse und das Modell, beim A
 
 | Prüfung | Stand |
 |---|---|
-| Unit-Tests `FreeLlmApiProviderTest`, `ProviderMemoryTest` | siehe `PROJECT-STATUS.md` |
+| Unit-Tests `FreeLlmApiProviderTest` (11), `ProviderMemoryTest` (12) | PASS in CI (`0f3aaa7`, Lauf #10) |
 | Echter FreeLLMAPI-Server, HTTPS-Wege, Anzeige in der App | NICHT GETESTET |

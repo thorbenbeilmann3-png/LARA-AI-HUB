@@ -71,7 +71,7 @@ Der Aufruf bleibt unverändert: Klappt er nicht, öffnet LARA nur Automate. Er w
 
 | Prüfung | Stand |
 |---|---|
-| Unit-Tests `AutomateInterfaceTest` | siehe `PROJECT-STATUS.md` |
+| Unit-Tests `AutomateInterfaceTest` (24): Empfang, Anbieter-Auswahl, Bestätigung, Rate-Begrenzung | PASS in CI (`0f3aaa7`, Lauf #10) |
 | Echter Flow auf dem Pixel, Automate → LARA | NICHT GETESTET |
 | LARA → Automate mit `START_FLOW` | NICHT GETESTET |
 | Bestätigungsdialog, Statusmeldungen | NICHT GETESTET |
