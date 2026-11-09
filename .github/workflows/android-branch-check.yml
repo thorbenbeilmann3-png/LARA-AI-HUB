@@ -111,7 +111,7 @@ jobs:
 
       - name: Remove signing key
         if: always()
-        run: rm -f "${ANDROID_USER_HOME:-$HOME/.android}/debug.keystore"
+        run: rm -f "${LARA_CI_KEYSTORE_PATH:-}"
 
   publish-draft:
     # Own job: the write permission never reaches the build steps or third-party actions there.

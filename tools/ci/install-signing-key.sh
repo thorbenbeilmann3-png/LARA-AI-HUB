@@ -1,7 +1,8 @@
 #!/bin/sh
-# Installs the fixed CI signing key from the secret LARA_CI_KEYSTORE_B64 as the
-# debug keystore, so every build gets the same certificate. Without a usable
-# secret nothing changes and the build goes on with a generated debug key.
+# Decodes the fixed CI signing key from the secret LARA_CI_KEYSTORE_B64 and hands
+# its path to Gradle via LARA_CI_KEYSTORE_PATH, so every build gets the same
+# certificate. Without a usable secret nothing is exported and the build goes on
+# with a generated debug key.
 # Prints only status text and the public certificate digest, never the secret.
 set -eu
 umask 077
@@ -10,9 +11,9 @@ umask 077
 key_alias=androiddebugkey
 key_pass=android
 
-dest_dir="${ANDROID_USER_HOME:-$HOME/.android}"
-dest="$dest_dir/debug.keystore"
+dest="${RUNNER_TEMP:-/tmp}/lara-ci.keystore"
 output="${GITHUB_OUTPUT:-/dev/null}"
+environment="${GITHUB_ENV:-/dev/null}"
 
 finish() {
     printf 'signing=%s\nexpected_cert=%s\n' "$1" "$2" >>"$output"
@@ -55,8 +56,8 @@ if [ -z "$cert" ]; then
     reject "Das Zertifikat im Secret ließ sich nicht auslesen."
 fi
 
-mkdir -p "$dest_dir"
 cp "$store" "$dest"
+printf 'LARA_CI_KEYSTORE_PATH=%s\n' "$dest" >>"$environment"
 
 echo "::notice title=Signatur::Feste Signatur aktiv. Zertifikat SHA-256: $cert"
 finish fixed "$cert"

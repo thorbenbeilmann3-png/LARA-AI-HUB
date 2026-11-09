@@ -57,7 +57,8 @@ Die Notiz am Release-Entwurf nennt das Zertifikat und ob die Signatur fest oder 
 
 ## Technik in Kürze
 
-- `tools/ci/install-signing-key.sh` legt das Secret als `debug.keystore` ab. Dadurch braucht `app/build.gradle.kts` keine Änderung und es genügt ein einziges Secret. Alias und Passwort sind die Standardwerte eines Android-Debug-Schlüssels (`androiddebugkey`, `android`); geheim ist nur die Datei.
+- `tools/ci/install-signing-key.sh` schreibt das Secret als Datei in den temporären Ordner des Build-Laufs und meldet den Pfad in `LARA_CI_KEYSTORE_PATH`. Nur wenn dieser Wert gesetzt ist, nimmt `app/build.gradle.kts` die Datei; ohne Secret ändert sich nichts. Alias und Passwort sind die Standardwerte eines Android-Debug-Schlüssels (`androiddebugkey`, `android`), deshalb genügt ein einziges Secret. Geheim ist nur die Datei.
+- Der erste Ansatz (Datei einfach als `~/.android/debug.keystore` ablegen) fiel im CI-Beweis durch: Die APK trug ein anderes Zertifikat. Deshalb jetzt der ausdrückliche Pfad.
 - Der Schlüssel ist für Testbuilds gedacht. Für eine Veröffentlichung im Play Store gehört ein eigener Schlüssel her.
 - Base64 ist keine Verschlüsselung ([GitHub](https://docs.github.com/actions/security-guides/using-secrets-in-github-actions)). Der Schutz kommt vom Secret-Speicher. Ein Secret ist auf 48 KB begrenzt ([GitHub](https://docs.github.com/en/actions/reference/security/secrets)), der Text hat rund 1,6 KB.
 - Elliptische Kurve P-256 statt RSA, damit der Text kürzer ist (rund 1.600 statt 3.600 Zeichen). APK-Signaturschema v2 unterstützt ECDSA mit P-256 seit Android 7.0 ([AOSP](https://source.android.com/docs/security/features/apksigning/v2)); LARA braucht mindestens Android 8.

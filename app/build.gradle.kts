@@ -19,6 +19,13 @@ android {
         manifestPlaceholders["appLabel"] = "LARA AI HUB"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // CI only: the fixed key from the secret LARA_CI_KEYSTORE_B64, see docs/FESTE-SIGNATUR.md.
+            System.getenv("LARA_CI_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }?.let { storeFile = file(it) }
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             // Test builds install next to an existing LARA and cannot replace it or its stored keys.

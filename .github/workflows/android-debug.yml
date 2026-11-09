@@ -67,4 +67,4 @@ jobs:
 
       - name: Remove signing key
         if: always()
-        run: rm -f "${ANDROID_USER_HOME:-$HOME/.android}/debug.keystore"
+        run: rm -f "${LARA_CI_KEYSTORE_PATH:-}"

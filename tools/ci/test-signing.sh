@@ -37,13 +37,14 @@ run_case() {
     case_home="$sandbox/$1"
     mkdir -p "$case_home"
     case_output="$case_home/github_output"
+    case_env="$case_home/github_env"
     case_log="$case_home/log"
-    case_store="$case_home/.android/debug.keystore"
+    case_store="$case_home/lara-ci.keystore"
     if [ "${SECRET+set}" = set ]; then
-        HOME="$case_home" ANDROID_USER_HOME='' GITHUB_OUTPUT="$case_output" \
+        RUNNER_TEMP="$case_home" GITHUB_OUTPUT="$case_output" GITHUB_ENV="$case_env" \
             LARA_CI_KEYSTORE_B64="$SECRET" sh "$install" >"$case_log" 2>&1
     else
-        env -u LARA_CI_KEYSTORE_B64 HOME="$case_home" ANDROID_USER_HOME='' GITHUB_OUTPUT="$case_output" \
+        env -u LARA_CI_KEYSTORE_B64 RUNNER_TEMP="$case_home" GITHUB_OUTPUT="$case_output" GITHUB_ENV="$case_env" \
             sh "$install" >"$case_log" 2>&1
     fi
     case_rc=$?
@@ -54,6 +55,7 @@ expect_rejected() {
     check "$1: falls back to debug signing" equal "$(value_of "$case_output" signing)" debug
     check "$1: no certificate expected" equal "$(value_of "$case_output" expected_cert)" ""
     check "$1: installs no key" absent "$case_store"
+    check "$1: tells Gradle no path" absent "$case_env"
     check "$1: warns" log_has "$case_log" '::warning title=Signatur::'
 }
 
@@ -96,6 +98,7 @@ run_case unset
 check "unset secret: build is not blocked" equal "$case_rc" 0
 check "unset secret: debug signing" equal "$(value_of "$case_output" signing)" debug
 check "unset secret: installs no key" absent "$case_store"
+check "unset secret: tells Gradle no path" absent "$case_env"
 check "unset secret: says so" log_has "$case_log" 'Kein Secret'
 
 SECRET=''
@@ -103,6 +106,7 @@ run_case empty
 check "empty secret: build is not blocked" equal "$case_rc" 0
 check "empty secret: debug signing" equal "$(value_of "$case_output" signing)" debug
 check "empty secret: installs no key" absent "$case_store"
+check "empty secret: tells Gradle no path" absent "$case_env"
 
 # --- Valid key ---
 SECRET=$real_secret
@@ -112,6 +116,7 @@ check "valid key: fixed signing" equal "$(value_of "$case_output" signing)" fixe
 check "valid key: expected certificate is the generated one" equal "$(value_of "$case_output" expected_cert)" "$generated_cert"
 check "valid key: file is the keystore" same_file "$case_store" "$p12"
 check "valid key: file is private" mode_is "$case_store" 600
+check "valid key: tells Gradle the path" equal "$(value_of "$case_env" LARA_CI_KEYSTORE_PATH)" "$case_store"
 check "valid key: secret is not logged" log_lacks "$case_log" "$secret_piece"
 first_cert=$(value_of "$case_output" expected_cert)
 
@@ -122,13 +127,6 @@ SECRET=$(printf '%s' "$real_secret" | fold -w 48; printf '\r\n ')
 run_case wrapped
 check "pasted with line breaks: fixed signing" equal "$(value_of "$case_output" signing)" fixed
 check "pasted with line breaks: same certificate" equal "$(value_of "$case_output" expected_cert)" "$first_cert"
-
-SECRET=$real_secret
-custom_home="$sandbox/custom-user-home"
-HOME="$sandbox/custom-home" ANDROID_USER_HOME="$custom_home" GITHUB_OUTPUT="$sandbox/custom-output" \
-    LARA_CI_KEYSTORE_B64="$SECRET" sh "$install" >/dev/null 2>&1
-check "ANDROID_USER_HOME is respected" test -s "$custom_home/debug.keystore"
-check "ANDROID_USER_HOME: home stays empty" absent "$sandbox/custom-home/.android/debug.keystore"
 
 # --- Bad secrets ---
 SECRET='das ist kein schluessel'
@@ -170,15 +168,6 @@ expect_rejected "certificate without private key"
 SECRET=$(fixture jks_ok -alias androiddebugkey -storepass android -keypass android)
 run_case jks_ok
 check "JKS with standard values: fixed signing" equal "$(value_of "$case_output" signing)" fixed
-
-# A bad secret must not damage a keystore that is already there.
-preset_home="$sandbox/preset"
-mkdir -p "$preset_home/.android"
-printf 'vorhanden' >"$preset_home/.android/debug.keystore"
-cp "$preset_home/.android/debug.keystore" "$sandbox/preset.copy"
-HOME="$preset_home" ANDROID_USER_HOME='' GITHUB_OUTPUT="$preset_home/out" \
-    LARA_CI_KEYSTORE_B64='das ist kein schluessel' sh "$install" >/dev/null 2>&1
-check "bad secret keeps an existing keystore" same_file "$preset_home/.android/debug.keystore" "$sandbox/preset.copy"
 
 echo "$passed passed, $failed failed"
 [ -n "${GITHUB_ACTIONS:-}" ] && echo "::notice title=Signing tests::$passed passed, $failed failed"
