@@ -1,14 +1,14 @@
 # LARA AI HUB – Projektstatus
 
 **Zentrale Informationsquelle für Thorben, ChatGPT und Claude.**
-Zuletzt aktualisiert: 08.11.2026 von Claude. Vor jeder Arbeit zusätzlich den aktuellen GitHub-Stand prüfen, dieser Text kann veraltet sein.
+Zuletzt aktualisiert: 09.11.2026 von Claude. Vor jeder Arbeit zusätzlich den aktuellen GitHub-Stand prüfen, dieser Text kann veraltet sein.
 
 ## Kurzfassung
 
 - `main` enthält nur die kleine Starter-App und Dokumentation. Die eigentliche App mit Anbietern, Keystore, App-Sperre und Automate liegt auf Branches, die **nicht** in `main` sind (PR #1 und #3).
 - Der Verbindungstest läuft auf dem Pixel 9a (Android 17). Ein echter App-Prozess erreicht `127.0.0.1:12434` und bekommt von `127.0.0.1:8765/mcp` die Antwort 401.
 - Die lokale KI auf Port 12434 beantwortet echte Chat-Anfragen, nachgewiesen im Alpine-Terminal auf dem Pixel. **Der Chat aus der LARA-App und das Ollama in Alpine (Port 11434) sind noch nicht getestet.**
-- Nächster Schritt: Claude baut Textfarbe und Einrichtungsassistenten in die Testversion (Abschnitt 4, E8). Den Chat-Test aus der App übernimmt dort Etappe 4.
+- Nächster Schritt: Thorben installiert `LARA-Test-64fe56d.apk` und führt den F18-Gerätetest aus (Abschnitt 2, Downloads). Den Chat-Test aus der App übernimmt Etappe 4 des Assistenten.
 
 ## 1. Regeln der Zusammenarbeit
 
@@ -48,10 +48,29 @@ Außerdem:
 | `claude/pc-thorben-setup-i4qwi5` | `512a001` | Baut auf #1 auf: App-Sperre, neues Design, Monitor, Core, Gedächtnis, Übergabeprotokoll | #3 nach #1, Entwurf |
 | `feature/automate-python-bridge` | `6cd8c40` | Bridge Automate ↔ Python auf Port 8765 | #2 nach `main`, Entwurf |
 | `safety/pre-arena-20261105` | `1f5b1f1` | Sicherungsstand | – |
-| `claude/alpine-verbindungstest` | `4c4a194` | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
+| `claude/alpine-verbindungstest` | `64fe56d` ist die F18-Testversion, danach Paket A in Arbeit | Verbindungstest, baut auf #3 auf, Details in `docs/ALPINE-OLLAMA-STATUS.md` | noch keiner |
 | `claude/projekt-dokumentation` | `9049d5a` | In `main` übernommen, nicht weiterführen (Branch bleibt bestehen) | #4, gemergt als `abd6b38` |
 
-**Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor. Aktuell: `LARA-Test-4c4a194.apk`, Commit `4c4a194`, SHA-256 `651b7bfaefdd7df9cf1103fd9993745171334374dd672227aab428558f107de5`, kein Gerätetest.
+**Downloads:** Die öffentliche Vorabversion `lara-debug-latest` stammt von `0418dfa`; der App-Code ist seitdem bis `512a001` unverändert. Testbuilds des Verbindungstests liegen als private Release-Entwürfe vor.
+
+**Aktuelle Testversion (F18):**
+
+| Angabe | Wert |
+|---|---|
+| Datei | `LARA-Test-64fe56d.apk` (privater Release-Entwurf `lara-alpine-test-64fe56d`) |
+| Commit | `64fe56d` |
+| SHA-256 | `4214bfe34b2cc343000360dfb77425c007d342a47825f0f50f8746177d7e00f3` |
+| Größe | 18.403.466 Bytes |
+| CI-Lauf | Android branch check #6 (Run-ID `42540090395`), grün, 120 Unit-Tests ohne Fehler |
+| Datum | 09.11.2026, 01:27 MEZ |
+| Paket | `de.laraai.hub.alpinetest` |
+| Am Gerät getestet | NEIN |
+
+Gegenüber der Vorgängerin neu: F18-Fallback auf `/v1/models`, Einrichtungsassistent mit 10 Etappen, app-weite Textfarbe (Details im CHANGELOG vom 09.11.2026).
+
+**VERALTET, nicht mehr installieren:** `LARA-Test-4c4a194.apk` (Commit `4c4a194`, SHA-256 `651b7bfaefdd7df9cf1103fd9993745171334374dd672227aab428558f107de5`). Sie meldet auf Port 12434 fälschlich „Modell fehlt“ (F18).
+
+Achtung: `LARA-Test-64fe56d.apk` hat eine andere Signatur als die veraltete Datei. Android erlaubt ein Update nur mit gleicher Signatur, deshalb muss die alte Testversion vor der Installation deinstalliert werden. Das löscht ihre lokalen Daten (Schlüssel, Chat).
 
 **Zwei verschiedene „Ollama“ auf dem Pixel, nicht verwechseln:**
 
@@ -179,7 +198,7 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 ## 7. Nächste Schritte und Blockaden
 
-1. **Claude:** Textfarbe und Einrichtungsassistent in der Testversion bauen und prüfen (E8).
+1. **Claude:** Textfarbe und Einrichtungsassistent sind in der Testversion `64fe56d` gebaut (CI-Lauf #6). Am Gerät noch nicht geprüft (E8).
 2. **Thorben:** Neue Testversion installieren, den Assistenten durchlaufen und den Bericht senden. Etappe 4 ersetzt den Chat-Test, Etappe 6 den Test von Port 11434. Die Gegenprobe mit beendetem Server bleibt von Hand nötig.
 3. **Thorben:** Die vollständige Ausgabe des Terminal-Befehls aus Abschnitt 10 in den Claude-Chat kopieren. Bisher kamen nur die letzten Zeilen an.
 4. **Claude:** Ergebnis auswerten, danach Ollama-Paket (Phase B) abstimmen.
