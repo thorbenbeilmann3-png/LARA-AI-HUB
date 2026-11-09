@@ -8,6 +8,57 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 ## 2026-11-09
 
+### Claude: Gerätestand 6c12380, Platzhalter-Adresse für FreeLLMAPI (Branch, kein Merge)
+
+| Angabe | Wert |
+|---|---|
+| Commit | `981b836` auf `claude/alpine-verbindungstest`, direkt nach `6c12380` |
+| Datei | `LARA-Test-981b836.apk` (privater Release-Entwurf `lara-alpine-test-981b836`) |
+| SHA-256 | `f837eb48d5e23bf91d877b2a59dbca05921af8f5065c45f4d029bb534144d220` (aus der APK nachgerechnet, stimmt mit dem GitHub-Wert überein) |
+| Größe | 18.419.942 Bytes |
+| CI-Lauf | Android branch check #13 (Run-ID `42623959500`), grün; 167 Unit-Tests, 0 Fehler |
+| Am Gerät getestet | NEIN |
+
+- **Platzhalter (E18):** `ApiConnection.kt`, `FreeLlmApiProviderTest.kt` und `docs/FREELLMAPI.md` nennen `http://192.0.2.10:3001/v1` statt der bisherigen Heimnetz-Adresse. In der APK geprüft: die alte Adresse fehlt, der Platzhalter ist enthalten.
+- **Preview-Basis (E16):** bleibt `6c12380`. Die Preview-APK `6c12380` enthält die alte Adresse noch in `classes3.dex` (geprüft). Sie steht außerdem in der Git-Historie (F20).
+- **Gerätestand (Bericht von Thorben, von Claude nicht geprüft):** auf `6c12380` Etappen 4, 6 und 7 erledigt, 8 und 9 übersprungen, Chat-Tab nicht getestet. Protokolle fehlen.
+- **Signatur:** `981b836` und `6c12380` haben verschiedene Zertifikate. Vor der Installation die alte Test-App deinstallieren; das löscht lokale Daten. Die feste Signatur kommt nach der Preview (E19).
+- **Korrektur:** Die Preview-Datei heißt `LARA-Test-6c12380.apk`. Der Eintrag darunter nannte `LARA-Preview-6c12380.apk`, die Tabelle ist angepasst.
+- **Dokumentation:** `PROJECT-STATUS.md` nennt die Preview-Basis, den Gerätestand und die Entscheidungen E16 bis E20.
+- **Nicht geändert:** `docs/LOKALE-KI-PRUEFUNG.md` und die übrigen Einträge mit der Heimnetz-Adresse, Port 12434 (F21). E18 betraf nur Port 3001.
+- **Nicht berührt:** `main`, PR #1 bis #3, `lara-debug-latest`. Kein Merge.
+
+### Claude: Preview-Stand 6c12380, Automate-Aktion entfernt (Branch, kein Merge)
+
+| Angabe | Wert |
+|---|---|
+| Datei | `LARA-Test-6c12380.apk` |
+| Commit | `6c12380` auf `claude/alpine-verbindungstest` |
+| SHA-256 | `1f25d7e20cafc6679d63d16ce30dfc9137cb5c1c48cb5a8ab33fde44b477ce7d` (aus der APK nachgerechnet, stimmt mit dem GitHub-Wert überein) |
+| Größe | 18.419.942 Bytes |
+| CI-Lauf | Android branch check #12 (Run-ID `42597721597`), grün; 167 Unit-Tests, 0 Fehler, Tests unverändert |
+| Am Gerät getestet | NEIN |
+
+- **Entfernt (E14):** die nicht dokumentierte Automate-Aktion, das Feld für die Flow-Adresse und der Autostart. In der APK geprüft: Die Aktion kommt im Code nicht mehr vor.
+- **Zurückgezogen (E15):** Der neue Chat-Client aus `34ea27e` (193 Tests, grün). Er kommt direkt nach der Preview als F4/F5-Fix zurück, dann mit Gerätetest. Bis dahin sind F4 und F5 offen.
+- **Chat-Tab:** Er nutzt dieselbe Funktion wie Etappe 4, die am Gerät durch die Test-Nachricht belegt ist. Der Chat-Tab selbst ist am Gerät noch nicht getestet.
+- **`lara-debug-latest`:** nicht berührt.
+- **Release-Entwurf:** `lara-alpine-test-6c12380` enthält dieselbe Datei als `LARA-Test-6c12380.apk`. Einen Entwurf mit dem Preview-Namen hat GitHub für die Claude-Sitzung abgelehnt (HTTP 403).
+- **Regel (E10):** Änderungen an `main` nur noch über Pull Requests mit Thorbens Freigabe.
+
+### Claude: Paket A, FreeLLMAPI, Eingaben merken und Automate (Branch, kein Merge)
+
+Alles auf `claude/alpine-verbindungstest`. Android branch check #10 (Run-ID `42588759747`) grün: 167 Unit-Tests, 0 Fehler, 120 bestehende unverändert. Am Gerät getestet: NEIN.
+
+| Paket | Commits | Umgesetzt | Offen | Braucht Thorben |
+|---|---|---|---|---|
+| A: feste CI-Signatur (F10, F17) | `f62e983`, `0264d96`, `ba631d8` | Secret `LARA_CI_KEYSTORE_B64` wird Build-Signatur, ohne Secret weiter Debug-Signatur. 77 Skript-Prüfungen, Beweis mit echten Builds (Run `42586874287`). Anleitung `docs/FESTE-SIGNATUR.md` | Echtes Secret, Update am Pixel | Secret eintragen |
+| FreeLLMAPI | `c57ef92` | Anbieter mit Standard-Adresse, Test nur `GET /v1/models`, Schlüssel optional im ApiKeyStore, keine LAN-Ausnahme. 11 Tests. Anleitung `docs/FREELLMAPI.md` | Echter Server, HTTPS | HTTPS auf dem Server, falls gewünscht |
+| Eingaben merken | `c57ef92` | Adresse, Modell und MCP-Adresse pro Anbieter in den App-Einstellungen, nie Schlüssel. 12 Tests | Anzeige am Pixel | – |
+| Automate (F8, F9) | `0f3aaa7` | LARA-Aktion `de.laraai.hub.action.START_FLOW`, Extras `anbieter` und `aktion`, Bestätigung bei kostenpflichtigen Anbietern, höchstens ein automatischer Start pro Minute. 24 Tests. Anleitung `docs/AUTOMATE-SCHNITTSTELLE.md` | Echter Flow am Pixel | Darf die nicht dokumentierte Automate-Aktion bleiben? |
+
+Neue Testversion: `LARA-Test-0f3aaa7.apk`, SHA-256 `5251df37590611cc0fe1bcd0d34482220b58abd2c770e73ae1865ddbeaf0f37f`, 18.419.942 Bytes.
+
 ### Claude: F18-Testversion 64fe56d dokumentiert
 
 | Angabe | Wert |
