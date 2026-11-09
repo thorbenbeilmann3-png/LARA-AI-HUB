@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import android.os.SystemClock
@@ -19,6 +18,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -298,31 +300,13 @@ internal fun copyText(context: Context, text: String) {
     clipboard.setPrimaryClip(ClipData.newPlainText("LARA", text))
 }
 
-private fun openAutomate(context: Context, flowUri: String): String {
+/** Only opens Automate. LARA does not start flows: Automate does not document an action for that. */
+private fun openAutomate(context: Context): String {
     return try {
-        if (flowUri.isNotBlank()) {
-            require(flowUri.startsWith("content://com.llamalab.automate.provider/flows/")) {
-                "Die Flow-Adresse muss aus dem Flow-Beginnungsblock von Automate stammen."
-            }
-            val intent = Intent("com.llamalab.automate.intent.action.START_FLOW").apply {
-                setPackage("com.llamalab.automate")
-                data = Uri.parse(flowUri)
-            }
-            try {
-                context.startActivity(intent)
-                "Automate-Flow wurde an Android übergeben. Der Startstatus muss in Automate geprüft werden."
-            } catch (_: Exception) {
-                val launchIntent = context.packageManager.getLaunchIntentForPackage("com.llamalab.automate")
-                    ?: throw IllegalStateException("Automate ist installiert, aber nicht startbar.")
-                context.startActivity(launchIntent)
-                "Automate geöffnet. Android hat den direkten Flow-Aufruf nicht angenommen; bitte den Flow dort manuell starten."
-            }
-        } else {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage("com.llamalab.automate")
-                ?: error("Automate ist auf diesem Gerät nicht startbar.")
-            context.startActivity(launchIntent)
-            "Automate geöffnet. Trage anschließend die Flow-Adresse in LARA ein."
-        }
+        val launchIntent = context.packageManager.getLaunchIntentForPackage("com.llamalab.automate")
+            ?: error("Automate ist auf diesem Gerät nicht startbar.")
+        context.startActivity(launchIntent)
+        "Automate geöffnet."
     } catch (e: Exception) {
         "Automate konnte nicht gestartet werden: ${e.message ?: "unbekannter Fehler"}"
     }
@@ -339,6 +323,8 @@ private fun LaraHubApp(
     val context = LocalContext.current
     val initialConfig = remember { loadConfig(context) }
     val providerMemory = remember { ProviderMemory.shared(context) }
+    val localChat = remember { LocalChatClient() }
+    var localChatApi by remember { mutableStateOf(ApiMode.OPENAI_COMPATIBLE) }
     var automateConfirmation by remember { mutableStateOf<AutomateRequest?>(null) }
     var selectedProvider by remember { mutableStateOf(AiProvider.fromId(initialConfig.providerId)) }
     var providerMenuExpanded by remember { mutableStateOf(false) }
@@ -422,7 +408,11 @@ private fun LaraHubApp(
         status = "Prüfe ${selectedProvider.label} und suche verfügbare Modelle …"
         scope.launch {
             try {
-                val result = ApiConnection.discover(context, selectedProvider, endpoint)
+                val result = if (selectedProvider == AiProvider.OLLAMA) {
+                    withContext(Dispatchers.IO) { localChat.models(endpoint) }
+                } else {
+                    ApiConnection.discover(context, selectedProvider, endpoint)
+                }
                 apiMode = result.mode
                 availableModels = result.models
                 if (model.isBlank() || (result.models.isNotEmpty() && model !in result.models)) {
@@ -452,16 +442,6 @@ private fun LaraHubApp(
             AutomateAction.CONNECTION_TEST -> {
                 selectedTab = 3
                 checkConnection()
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        if (autoStartAutomate && automateFlowUri.isNotBlank()) {
-            when (AutomateGate.shared(context).autostart()) {
-                AutostartDecision.START -> { status = openAutomate(context, automateFlowUri) }
-                AutostartDecision.RATE_LIMITED -> { status = "Automate-Autostart übersprungen: höchstens ein Start pro Minute." }
-                AutostartDecision.ALREADY_DONE -> Unit
             }
         }
     }
@@ -555,11 +535,25 @@ private fun LaraHubApp(
                             }
                         }
                         Text(status, style = MaterialTheme.typography.bodySmall)
+                        if (selectedProvider == AiProvider.OLLAMA) {
+                            TextButton(
+                                onClick = {
+                                    localChatApi = if (localChatApi == ApiMode.OPENAI_COMPATIBLE) ApiMode.OLLAMA_NATIVE else ApiMode.OPENAI_COMPATIBLE
+                                },
+                                enabled = !busy
+                            ) { Text("Schnittstelle: ${LocalChatClient.pathOf(localChatApi)} (antippen zum Wechseln)") }
+                        }
+                        val chatListState = rememberLazyListState()
+                        val shownLines = lines.takeLast(80)
+                        LaunchedEffect(lines.size) {
+                            if (shownLines.isNotEmpty()) chatListState.scrollToItem(shownLines.lastIndex)
+                        }
                         LazyColumn(
                             Modifier.weight(1f).fillMaxWidth(),
+                            state = chatListState,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(lines.takeLast(80)) { entry ->
+                            items(shownLines) { entry ->
                                 val mine = entry.role == "Du"
                                 GlassCard(
                                     Modifier.fillMaxWidth().padding(start = if (mine) 32.dp else 0.dp, end = if (mine) 0.dp else 32.dp),
@@ -597,6 +591,22 @@ private fun LaraHubApp(
                                     status = "Verbinde und sende Anfrage …"
                                     scope.launch {
                                         try {
+                                            if (selectedProvider == AiProvider.OLLAMA) {
+                                                val chosen = model.ifBlank { LocalChatClient.DEFAULT_MODEL }
+                                                status = "Sende an ${endpoint.trim()} · ${LocalChatClient.pathOf(localChatApi)} …"
+                                                val reply = withContext(Dispatchers.IO) {
+                                                    localChat.send(endpoint, chosen, localChatApi, history, question)
+                                                }
+                                                if (model.isBlank()) model = chosen
+                                                persistConfig()
+                                                addMessage("LARA / $chosen", reply.text)
+                                                reply.usage?.let {
+                                                    UsageLog.add(context, it)
+                                                    usageEntries = UsageLog.load(context)
+                                                }
+                                                status = "Antwort erhalten · Ollama"
+                                                return@launch
+                                            }
                                             val discovery = ApiConnection.discover(context, selectedProvider, endpoint)
                                             apiMode = discovery.mode
                                             if (availableModels != discovery.models) availableModels = discovery.models
@@ -623,6 +633,7 @@ private fun LaraHubApp(
                                             status = "Antwort erhalten · $apiLabel"
                                         } catch (e: Exception) {
                                             status = "Fehler – " + ProviderErrors.describe(selectedProvider.label, e)
+                                            if (e is LocalChatException) addMessage("Hinweis", e.message.orEmpty())
                                         } finally {
                                             busy = false
                                         }
@@ -850,31 +861,12 @@ private fun LaraHubApp(
                         }
                         HorizontalDivider(color = LaraColors.CyanDim.copy(alpha = 0.5f))
                         Text("Automate von LlamaLab", style = MaterialTheme.typography.titleMedium)
-                        OutlinedTextField(
-                            value = automateFlowUri,
-                            onValueChange = { automateFlowUri = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Flow-Adresse aus Automate (optional)") },
-                            placeholder = { Text("content://com.llamalab.automate.provider/flows/…") },
-                            singleLine = true
-                        )
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = autoStartAutomate,
-                                onCheckedChange = { autoStartAutomate = it; persistConfig() }
-                            )
-                            Text("Automate-Flow beim Start von LARA automatisch ausführen")
-                        }
                         OutlinedButton(
-                            onClick = {
-                                persistConfig()
-                                status = openAutomate(context, automateFlowUri)
-                            },
+                            onClick = { status = openAutomate(context) },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (automateFlowUri.isBlank()) "Automate öffnen" else "Automate-Flow jetzt starten") }
+                        ) { Text("Automate öffnen") }
                         Text(
-                            "Der Flow muss in Automate selbst angelegt sein: Flow-Beginn → App starten (Ollama-App) → HTTP-Anfrage an den Server prüfen. " +
-                                "Die Flow-Adresse ist installationsgebunden und wird hier lokal gespeichert.",
+                            "LARA startet keine Flows. Ein Flow kann LARA starten, die Anleitung steht in docs/AUTOMATE-SCHNITTSTELLE.md.",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Button(onClick = { persistConfig(); status = "Verbindungseinstellungen gespeichert." }, modifier = Modifier.fillMaxWidth()) {

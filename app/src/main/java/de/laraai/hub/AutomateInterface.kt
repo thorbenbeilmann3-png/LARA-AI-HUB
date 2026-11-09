@@ -66,7 +66,10 @@ internal class AutomateGate(
 ) {
     private var autostartDone = false
 
-    /** LARA starts the flow at most once per app process, so a rebuilt screen never fires it. */
+    /**
+     * At most once per app process, so a rebuilt screen never fires it. Not wired up at the
+     * moment: LARA stopped starting flows on 09.11.2026 because the action is undocumented.
+     */
     @Synchronized
     fun autostart(): AutostartDecision {
         if (autostartDone) return AutostartDecision.ALREADY_DONE

@@ -2,14 +2,14 @@
 
 Stand: 09.11.2026. Am Gerät getestet: NEIN.
 
-## Zwei Richtungen, zwei Aktionen
+## Richtungen
 
 | Richtung | Aktion | Gehört | Stand |
 |---|---|---|---|
 | Automate startet LARA | `de.laraai.hub.action.START_FLOW` | LARA | hier verbindlich festgelegt |
-| LARA startet einen Flow | `com.llamalab.automate.intent.action.START_FLOW` | Automate | **nicht offiziell dokumentiert** (siehe unten) |
+| LARA startet einen Flow | keine | – | **entfernt** (Beschluss vom 09.11.2026, siehe F9). LARA kann Automate nur noch öffnen |
 
-Offiziell festlegen kann LARA nur die eigene Aktion. Die Automate-Aktion gehört LlamaLab.
+Die offizielle Schnittstelle ist allein: Automate startet LARA.
 
 ## Automate startet LARA
 
@@ -54,18 +54,13 @@ Felder und Dictionary-Schreibweise stammen aus der offiziellen Doku ([App start]
 
 ## F8: Autostart und Rate-Begrenzung
 
-Vorher feuerte der Autostart bei jedem Neuaufbau der Hauptansicht, etwa beim Entsperren und Drehen. Jetzt gilt für automatische Starts:
-
-- LARA startet den eingetragenen Flow höchstens einmal pro App-Start.
-- Höchstens ein Start pro Minute, auch über einen App-Neustart hinweg.
-- Automate → LARA und LARA → Automate werden getrennt gezählt. Eine Schleife zwischen beiden läuft so nicht hoch.
-- Die Knöpfe in LARA, die du selbst drückst, sind nicht begrenzt.
+Vorher feuerte der Autostart bei jedem Neuaufbau der Hauptansicht, etwa beim Entsperren und Drehen. Der Autostart ist mit F9 entfernt. Für Starts durch Automate gilt: höchstens einer pro Minute, auch über einen App-Neustart hinweg.
 
 ## F9: LARA startet einen Flow
 
 Die offizielle Doku nennt beim Block **Flow beginning** nur die „Flow URI“ und eine „Payload“ vom startenden Programm, aber keine Intent-Aktion ([Flow beginning](https://llamalab.com/automate/doc/block/flow_beginning.html)). `START_FLOW` fand ich nur in Nutzerbeiträgen von 2017 und 2019 ([Forum](https://groups.google.com/g/automate-user/c/wlu_Gdykst8)) und in einem Gist von 2020 ([Gist](https://gist.github.com/Ben-Kaniobi/5accd187f7716d909a0718e87cbeda23)).
 
-Der Aufruf bleibt unverändert: Klappt er nicht, öffnet LARA nur Automate. Er widerspricht aber der Regel „keine undokumentierten Intent-Aktionen“ aus `docs/ALPINE-OLLAMA-MCP-INTEGRATION.md`. Ob er bleiben darf, entscheidet Thorben.
+**Entfernt am 09.11.2026 (Beschluss von Thorben):** Der Aufruf, das Feld für die Flow-Adresse und der Autostart sind aus der App entfernt. Einen Flow startest du in Automate selbst. Der Knopf „Automate öffnen“ nutzt nur Androids normalen App-Start.
 
 ## Teststand
 
@@ -73,5 +68,5 @@ Der Aufruf bleibt unverändert: Klappt er nicht, öffnet LARA nur Automate. Er w
 |---|---|
 | Unit-Tests `AutomateInterfaceTest` (24): Empfang, Anbieter-Auswahl, Bestätigung, Rate-Begrenzung | PASS in CI (`0f3aaa7`, Lauf #10) |
 | Echter Flow auf dem Pixel, Automate → LARA | NICHT GETESTET |
-| LARA → Automate mit `START_FLOW` | NICHT GETESTET |
+| LARA → Automate mit `START_FLOW` | entfernt |
 | Bestätigungsdialog, Statusmeldungen | NICHT GETESTET |

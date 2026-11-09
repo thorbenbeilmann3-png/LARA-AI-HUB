@@ -365,8 +365,7 @@ internal class SetupRunner(
     private fun checkAutomate(state: SetupState, step: SetupStep): SetupRun {
         val facts = actions.automateFacts()
         if (!facts.installed) return done(state, step, SetupStatus.NEEDS_USER, "Automate ist nicht installiert.")
-        val flow = if (facts.flowSaved) "Eine Flow-Adresse ist gespeichert." else "Eine Flow-Adresse fehlt noch."
-        return done(state, step, SetupStatus.OK, "Automate ist installiert (Version ${facts.version ?: "unbekannt"}). $flow Gestartet wurde nichts.")
+        return done(state, step, SetupStatus.OK, "Automate ist installiert (Version ${facts.version ?: "unbekannt"}). Gestartet wurde nichts.")
     }
 
     private suspend fun checkProvider(state: SetupState, step: SetupStep, provider: AiProvider): SetupRun {
