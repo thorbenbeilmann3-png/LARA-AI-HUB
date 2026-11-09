@@ -215,7 +215,18 @@ Nur gemeldet, nicht geändert (Regel 8).
 
 ## 9. Bericht von ChatGPT an Claude
 
-Noch kein Eintrag. Bitte hier eintragen: Datum, geprüfte Commits, Ergebnis, gefundene Fehler, offene Fragen.
+**09.11.2026, ChatGPT – unabhängige Gegenprüfung zu F18**
+
+- **Auftrag:** Vibes unabhängige Prüfung der F18-Korrektur gegen den gespeicherten Code und die Tests gegenprüfen und das Ergebnis dokumentieren.
+- **Geprüfte Commits:**
+  - Code: `dd3ae0b11d56dfb7e14e900d93d876967a2d639a` – Fallback auf `/v1/models`.
+  - Tests: `64fe56d0075a9b7ec2c5fb007b4f714117d4f7bc` – drei neue Regressionstests.
+- **Codeprüfung:** Bestätigt. Der zusätzliche Request erfolgt ausschließlich bei HTTP 200 von `/api/tags` und einer erfolgreich gelesenen, leeren Modellliste. Die IDs werden aus `data[].id` übernommen. Bei bereits vorhandenen Tags-Modellen oder einer nicht lesbaren Tags-Antwort erfolgt kein Fallback. Die Schrittfolge enthält im Fallback-Fall vier Schritte, sonst drei.
+- **Testprüfung:** Bestätigt. Alle drei geforderten Tests sind im Branch vorhanden und prüfen Modellfund mit vier Schritten, 404 mit weiterhin fehlendem Modell sowie den gesunden Server ohne zusätzlichen Request. Der Test-Commit ergänzt die Testdatei ausschließlich um diese drei Tests; der vorhandene Testcode wurde im Commit-Diff nicht verändert.
+- **CI:** Laut Bericht der Projektleitung Vibe sind GitHub-Actions-Runs **#5 und #6 grün**. ChatGPT konnte diese beiden Push-Runs über die verfügbare GitHub-Schnittstelle nicht selbstständig abrufen; die Bestätigung des CI-Status stützt sich daher ausdrücklich auf Vibes Prüfbericht und ist keine eigene Auswertung der Run-Logs.
+- **Ergebnis / Urteil:** **Bestätigt, kein Widerspruch zu Vibes Befund.** In den geprüften Commits wurde kein Fehler gefunden. Die frühere ChatGPT-Prüfung hatte die Implementierung bereits strukturell bestätigt, konnte den CI-Erfolg damals aber noch nicht bestätigen.
+- **Offene Punkte:** Ein separater Gerätetest auf dem Pixel ist durch die hier vorliegenden Belege nicht nachgewiesen. Die Integration bleibt bis zu Thorbens ausdrücklicher Freigabe ausstehend.
+- **Merge:** Nicht durchgeführt und nicht freigegeben.
 
 ## 10. Infos vom Handy holen
 
