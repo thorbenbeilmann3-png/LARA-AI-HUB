@@ -20,7 +20,9 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 | Am Gerät getestet | NEIN |
 
 - **Entfernt (E14):** die nicht dokumentierte Automate-Aktion, das Feld für die Flow-Adresse und der Autostart. In der APK geprüft: Die Aktion kommt im Code nicht mehr vor.
-- **Zurückgenommen (E15):** Der neue Chat-Client aus `34ea27e` (193 Tests, grün). F2, F4 und F5 bleiben offen.
+- **Zurückgezogen (E15):** Der neue Chat-Client aus `34ea27e` (193 Tests, grün). Er kommt direkt nach der Preview als F4/F5-Fix zurück, dann mit Gerätetest. Bis dahin sind F4 und F5 offen.
+- **Chat-Tab:** Er nutzt dieselbe Funktion wie Etappe 4, die am Gerät durch die Test-Nachricht belegt ist. Der Chat-Tab selbst ist am Gerät noch nicht getestet.
+- **`lara-debug-latest`:** nicht berührt.
 - **Release-Entwurf:** `lara-alpine-test-6c12380` enthält dieselbe Datei als `LARA-Test-6c12380.apk`. Einen Entwurf mit dem Preview-Namen hat GitHub für die Claude-Sitzung abgelehnt (HTTP 403).
 - **Regel (E10):** Änderungen an `main` nur noch über Pull Requests mit Thorbens Freigabe.
 
