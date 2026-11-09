@@ -208,6 +208,48 @@ class AlpineProbeTest {
     }
 
     @Test
+    fun emptyTagsFallsBackToOpenAiModelsAndFindsExpectedModel() {
+        val base = serve { path ->
+            when (path) {
+                "/api/tags" -> json("""{"models":[]}""")
+                "/v1/models" -> json("""{"data":[{"id":"qwen2.5-0.5b-instruct-q4_k_m"}]}""")
+                else -> healthy(path)
+            }
+        }
+        val report = probe().run(base, "$base/mcp", "qwen2.5-0.5b-instruct-q4_k_m")
+        assertEquals(ModelState.FOUND, report.modelState)
+        assertEquals(4, report.steps.size)
+        assertEquals(ProbeResult.OK, report.steps[2].result)
+        assertTrue(report.steps[2].message, report.steps[2].message.contains("/v1/models"))
+        assertEquals(listOf("qwen2.5-0.5b-instruct-q4_k_m"), report.models)
+    }
+
+    @Test
+    fun emptyTagsAndMissingOpenAiModelsEndpointStillReportsModelMissing() {
+        val base = serve { path ->
+            when (path) {
+                "/api/tags" -> json("""{"models":[]}""")
+                "/v1/models" -> MockResponse().setResponseCode(404)
+                else -> healthy(path)
+            }
+        }
+        val report = probe().run(base, "$base/mcp", "qwen2.5-0.5b-instruct-q4_k_m")
+        assertEquals(ModelState.MISSING, report.modelState)
+        assertTrue(report.verdict, report.verdict.contains("fehlt"))
+        assertEquals(4, report.steps.size)
+        assertEquals(ProbeResult.HTTP_ERROR, report.steps[2].result)
+    }
+
+    @Test
+    fun healthyTagsDoNotRequestOpenAiModelsEndpoint() {
+        val base = serve(healthy)
+        val report = probe().run(base, "$base/mcp", "qwen2.5:0.5b")
+        assertEquals(3, report.steps.size)
+        assertEquals(3, requests.size)
+        assertFalse(requests.any { it.path == "/v1/models" })
+    }
+
+    @Test
     fun mcpAnsweringWithoutLoginIsFlagged() {
         val base = serve { path -> if (path == "/mcp") json("{}") else healthy(path) }
         val report = probe().run(base, "$base/mcp", "qwen2.5:0.5b")
