@@ -1,0 +1,47 @@
+name: Signing check
+
+# Proves the fixed-signature mechanism with a throwaway key created inside the job.
+# Has no access to the real secret and publishes nothing.
+on:
+  push:
+    branches:
+      - "claude/alpine-**"
+    paths:
+      - "tools/ci/**"
+      - "tools/erzeuge-lara-signatur.sh"
+      - "app/build.gradle.kts"
+      - ".github/workflows/signing-check.yml"
+      - ".github/workflows/android-branch-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LARA_SIDE_BY_SIDE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+
+      - name: Test the signing scripts
+        run: sh tools/ci/test-signing.sh
+
+      - name: Prove stable certificate across real builds
+        run: sh tools/ci/prove-fixed-signature.sh

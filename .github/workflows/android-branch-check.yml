@@ -17,6 +17,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      signing: ${{ steps.inspect.outputs.signing }}
+      cert: ${{ steps.inspect.outputs.cert }}
     env:
       # Test build: other package name, so it installs next to an existing LARA.
       LARA_SIDE_BY_SIDE: "1"
@@ -37,6 +40,12 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+
+      - name: Install fixed signing key if configured
+        id: signing
+        env:
+          LARA_CI_KEYSTORE_B64: ${{ secrets.LARA_CI_KEYSTORE_B64 }}
+        run: sh tools/ci/install-signing-key.sh
 
       - name: Run unit tests
         run: gradle --no-daemon :app:testDebugUnitTest
@@ -69,6 +78,10 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Inspect APK
+        id: inspect
+        env:
+          SIGNING: ${{ steps.signing.outputs.signing }}
+          EXPECTED_CERT: ${{ steps.signing.outputs.expected_cert }}
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
@@ -80,7 +93,13 @@ jobs:
           "$APKSIGNER" verify --print-certs "$APK" | tee apk-certs.txt
           CERT=$(grep -m1 "certificate SHA-256 digest" apk-certs.txt | awk '{print $NF}')
           SUM=$(sha256sum "$APK" | cut -d' ' -f1)
-          echo "::notice title=APK::sha256=$SUM signing-cert-sha256=$CERT"
+          if [ "$SIGNING" = fixed ] && [ "$CERT" != "$EXPECTED_CERT" ]; then
+            echo "::error title=Signatur::Die APK trägt nicht das Zertifikat des festen Schlüssels."
+            exit 1
+          fi
+          echo "::notice title=APK::sha256=$SUM signing-cert-sha256=$CERT signing=$SIGNING"
+          echo "signing=$SIGNING" >> "$GITHUB_OUTPUT"
+          echo "cert=$CERT" >> "$GITHUB_OUTPUT"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -89,6 +108,10 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "${ANDROID_USER_HOME:-$HOME/.android}/debug.keystore"
 
   publish-draft:
     # Own job: the write permission never reaches the build steps or third-party actions there.
@@ -107,15 +130,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          SIGNING: ${{ needs.build.outputs.signing }}
+          CERT: ${{ needs.build.outputs.cert }}
         run: |
           set -euo pipefail
           SHORT=${GITHUB_SHA::7}
           NAME="LARA-Test-$SHORT.apk"
           cp app-debug.apk "$NAME"
           SUM=$(sha256sum "$NAME" | cut -d' ' -f1)
+          if [ "$SIGNING" = fixed ]; then
+            SIGN_TEXT="Signatur: fest. Update ohne Deinstallation, wenn die installierte Testversion dasselbe Zertifikat hat."
+          else
+            SIGN_TEXT="Signatur: wechselnd. Vor der Installation die alte Testversion deinstallieren."
+          fi
           gh release create "lara-alpine-test-$SHORT" "$NAME" \
             --draft \
             --prerelease \
             --target "$GITHUB_SHA" \
             --title "LARA Test $SHORT (Entwurf, nicht öffentlich)" \
-            --notes "Testbuild aus ${GITHUB_REF_NAME} @ ${GITHUB_SHA}. Paket de.laraai.hub.alpinetest, installiert sich neben einer vorhandenen LARA-App. SHA-256: ${SUM}. Kein Gerätetest durch CI."
+            --notes "Testbuild aus ${GITHUB_REF_NAME} @ ${GITHUB_SHA}. Paket de.laraai.hub.alpinetest, installiert sich neben einer vorhandenen LARA-App. SHA-256: ${SUM}. Zertifikat SHA-256: ${CERT}. ${SIGN_TEXT} Kein Gerätetest durch CI."

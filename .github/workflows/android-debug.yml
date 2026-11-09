@@ -31,6 +31,11 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
 
+      - name: Install fixed signing key if configured
+        env:
+          LARA_CI_KEYSTORE_B64: ${{ secrets.LARA_CI_KEYSTORE_B64 }}
+        run: sh tools/ci/install-signing-key.sh
+
       - name: Run unit tests
         run: gradle --no-daemon :app:testDebugUnitTest
 
@@ -59,3 +64,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "LARA Debug – neueste Version" \
             --notes "Automatisch gebaut aus ${GITHUB_REF_NAME} @ ${GITHUB_SHA}. Debug-Version, nur fuer Tests. SHA-256: ${SUM}"
+
+      - name: Remove signing key
+        if: always()
+        run: rm -f "${ANDROID_USER_HOME:-$HOME/.android}/debug.keystore"
