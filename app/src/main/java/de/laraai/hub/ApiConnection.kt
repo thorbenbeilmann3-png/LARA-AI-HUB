@@ -25,7 +25,7 @@ internal enum class AiProvider(
     OPENROUTER("openrouter", "OpenRouter", "https://openrouter.ai/api/v1", true),
     CEREBRAS("cerebras", "Cerebras", "https://api.cerebras.ai/v1", true),
     OPENCLAW("openclaw", "OpenClaw · Gateway", "", true),
-    FREELLMAPI("freellmapi", "FreeLLMAPI", "http://192.168.178.21:3001/v1", false),
+    FREELLMAPI("freellmapi", "FreeLLMAPI", "http://192.0.2.10:3001/v1", false),
     CUSTOM("custom", "Eigener OpenAI-kompatibler Server", "", false);
 
     /** A key may be stored for this provider, in ApiKeyStore only. */

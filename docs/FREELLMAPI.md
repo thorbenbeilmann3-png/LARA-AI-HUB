@@ -7,14 +7,14 @@ Stand: 09.11.2026. Status: **integriert, ohne HTTPS im LAN blockiert.** Am Gerä
 | Punkt | Regel |
 |---|---|
 | Anbieter | „FreeLLMAPI“ unter Tools, OpenAI-kompatible Schnittstelle |
-| Standard-Adresse | `http://192.168.178.21:3001/v1`, frei änderbar |
+| Standard-Adresse | `http://192.0.2.10:3001/v1` (Platzhalter). Die eigene Adresse trägst du in der App ein; sie steht nicht im Repository |
 | Verbindungstest („Verbinden / Modelle laden“) | nur `GET /v1/models`, keine Nachricht, keine Kosten |
 | API-Schlüssel | optional, ausschließlich im ApiKeyStore (Android Keystore, AES-GCM) |
 | HTTP | nur zu `127.0.0.1` und `localhost`. Keine Ausnahme fürs Heimnetz (Beschluss von Thorben, 09.11.2026) |
 
 ## Was der Beschluss bedeutet
 
-Die Standard-Adresse ist eine `http://`-Adresse im Heimnetz. LARA blockiert sie deshalb mit der bestehenden Meldung: „Unverschlüsseltes HTTP ist nur für Dienste auf diesem Handy erlaubt …“. Das ist so gewollt. **FreeLLMAPI auf einem anderen Gerät ist erst mit HTTPS nutzbar.** Bis dahin geht nur FreeLLMAPI auf dem Handy selbst (`http://127.0.0.1:3001/v1`, nicht getestet). Dort darf auch der Schlüssel über HTTP laufen, weil er das Handy nicht verlässt.
+Die Standard-Adresse ist nur ein Platzhalter. Eine eigene Adresse im Heimnetz ist meist eine `http://`-Adresse, und LARA blockiert sie deshalb mit der bestehenden Meldung: „Unverschlüsseltes HTTP ist nur für Dienste auf diesem Handy erlaubt …“. Das ist so gewollt. **FreeLLMAPI auf einem anderen Gerät ist erst mit HTTPS nutzbar.** Bis dahin geht nur FreeLLMAPI auf dem Handy selbst (`http://127.0.0.1:3001/v1`, nicht getestet). Dort darf auch der Schlüssel über HTTP laufen, weil er das Handy nicht verlässt.
 
 Laut README brauchen alle `/v1/*`-Routen den „Unified Key“ von FreeLLMAPI ([README](https://github.com/vi70x4/freellmapi)). In LARA ist der Schlüssel optional, ohne ihn kommt dann vermutlich HTTP 401. Nicht geprüft.
 

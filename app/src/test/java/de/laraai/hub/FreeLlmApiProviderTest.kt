@@ -33,7 +33,7 @@ class FreeLlmApiProviderTest {
     fun `is a provider with the agreed default address and an optional key`() {
         assertEquals(provider, AiProvider.fromId("freellmapi"))
         assertEquals("FreeLLMAPI", provider.label)
-        assertEquals("http://192.168.178.21:3001/v1", provider.defaultEndpoint)
+        assertEquals("http://192.0.2.10:3001/v1", provider.defaultEndpoint)
         assertFalse(provider.requiresApiKey)
         assertTrue(provider.acceptsApiKey)
     }
@@ -89,7 +89,7 @@ class FreeLlmApiProviderTest {
     @Test
     fun `https and this phone are allowed`() {
         assertEquals("https://llm.example.org", ApiConnection.rootUrl("https://llm.example.org/v1", provider))
-        assertEquals("https://192.168.178.21:3001", ApiConnection.rootUrl("https://192.168.178.21:3001/v1", provider))
+        assertEquals("https://192.0.2.10:3001", ApiConnection.rootUrl("https://192.0.2.10:3001/v1", provider))
         assertEquals("http://127.0.0.1:3001", ApiConnection.rootUrl("http://127.0.0.1:3001/v1", provider))
         assertEquals("http://localhost:3001", ApiConnection.rootUrl("http://localhost:3001/v1", provider))
     }
@@ -99,7 +99,7 @@ class FreeLlmApiProviderTest {
         assertTrue(ApiConnection.mayCarryCredentials(provider, "https://llm.example.org"))
         assertTrue(ApiConnection.mayCarryCredentials(provider, "http://127.0.0.1:3001"))
         assertTrue(ApiConnection.mayCarryCredentials(provider, "http://localhost:3001"))
-        assertFalse(ApiConnection.mayCarryCredentials(provider, "http://192.168.178.21:3001"))
+        assertFalse(ApiConnection.mayCarryCredentials(provider, "http://192.0.2.10:3001"))
     }
 
     @Test
