@@ -2,6 +2,21 @@
 
 Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt und wie es geprüft wurde. Den aktuellen Gesamtstand beschreibt `PROJECT-STATUS.md`. Die Einträge bis zum 08.11.2026 stehen ausführlich in `docs/AI_SHARED_HANDOFF.md` (Branch `claude/pc-thorben-setup-i4qwi5`).
 
+# Änderungsübersicht LARA AI HUB
+
+Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt und wie es geprüft wurde. Den aktuellen Gesamtstand beschreibt `PROJECT-STATUS.md`. Die Einträge bis zum 08.11.2026 stehen ausführlich in `docs/AI_SHARED_HANDOFF.md` (Branch `claude/pc-thorben-setup-i4qwi5`).
+
+## 2026-11-09
+
+### ChatGPT: F18 – Fallback auf OpenAI-kompatible Modellliste
+
+- **Branch:** `claude/alpine-verbindungstest`
+- **Commits:** `dd3ae0b` (Implementierung), `64fe56d` (drei Regressionstests).
+- **Geändert:** `AlpineProbe.kt`: Wenn `/api/tags` erfolgreich eine leere Modellliste liefert, wird zusätzlich `/v1/models` gelesen; Modellnamen werden aus `data[].id` übernommen. Bei bereits gefüllter oder nicht lesbarer Tags-Liste erfolgt kein zusätzlicher Request.
+- **Tests ergänzt:** leerer Tags-Endpunkt mit Modell-Fallback; Fallback-Endpunkt 404 bleibt `MISSING` mit „fehlt“; gesunder Server verwendet exakt drei Requests und fragt `/v1/models` nicht ab.
+- **Prüfstatus:** Änderungen auf GitHub gespeichert. Die bestehende Testsuite wurde nicht lokal ausgeführt; GitHub-Actions-Ausführung und Gerätetest stehen noch aus. Die 80 vorhandenen Tests wurden nicht verändert. Erwartet werden 83 Tests insgesamt.
+- **Integration:** Kein Merge; Branch bleibt separat bis zu Thorbens Freigabe.
+
 ## 2026-11-08
 
 ### Claude: Gemeinsame Dateien in `main`, Antworten von Thorben festgehalten
