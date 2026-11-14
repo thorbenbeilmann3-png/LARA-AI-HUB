@@ -69,7 +69,12 @@ async def review_with_model(
     criteria: list[str],
     client=Depends(get_mistral_client),
 ) -> str:
-    """Ein Modell prueft den Prompt und liefert Rohtext zurueck."""
+    """Ein Modell prueft den Prompt und liefert Rohtext zurueck.
+
+    Liegt kein verwertbarer Text vor (leer oder anderes Feldformat),
+    wird statt eines erfundenen Ergebnisses eine Diagnose der Rohantwort
+    zurueckgegeben, damit die Ursache nachvollziehbar ist.
+    """
     response = await client.chat.complete_async(
         model=model,
         messages=[
@@ -78,7 +83,13 @@ async def review_with_model(
         ],
     )
     content = response.choices[0].message.content
-    return content if isinstance(content, str) else ""
+    if isinstance(content, str) and content.strip():
+        return content
+    try:
+        dump = response.model_dump_json(exclude_none=True)
+    except Exception:
+        dump = repr(response)
+    return "DIAGNOSE_ROHANTWORT: " + dump[:8000]
 
 
 @workflows.workflow.define(
