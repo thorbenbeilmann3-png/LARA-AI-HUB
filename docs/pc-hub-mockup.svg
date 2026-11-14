@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="1280" height="800" fill="#081420"/>
+  <!-- Fenster -->
+  <rect x="20" y="20" width="1240" height="760" rx="16" fill="#0d1f2e" stroke="#1d3a4d" stroke-width="2"/>
+  <rect x="20" y="20" width="1240" height="46" rx="16" fill="#102435"/>
+  <rect x="20" y="46" width="1240" height="20" fill="#102435"/>
+  <circle cx="46" cy="43" r="6" fill="#ff5f57"/>
+  <circle cx="66" cy="43" r="6" fill="#febc2e"/>
+  <circle cx="86" cy="43" r="6" fill="#28c840"/>
+  <text x="112" y="49" font-size="15" fill="#dbe7f0" font-weight="600">LARA AI HUB – PC Edition (Mockup)</text>
+  <text x="1240" y="49" font-size="12" fill="#7d93a6" text-anchor="end">localhost:8080 · nur lokal</text>
+
+  <!-- Sidebar -->
+  <rect x="20" y="66" width="232" height="714" fill="#0b1a28"/>
+  <text x="42" y="104" font-size="24" font-weight="700" fill="#2fe0b4">LARA</text>
+  <text x="42" y="122" font-size="11" fill="#7d93a6" letter-spacing="3">AI HUB</text>
+  <!-- Nav -->
+  <rect x="32" y="142" width="208" height="38" rx="9" fill="#14324a"/>
+  <circle cx="52" cy="161" r="7" fill="#2fe0b4"/>
+  <text x="68" y="166" font-size="14" fill="#2fe0b4" font-weight="600">Chat</text>
+  <circle cx="52" cy="201" r="7" fill="#7d93a6"/><text x="68" y="206" font-size="14" fill="#dbe7f0">Postfach</text>
+  <circle cx="52" cy="241" r="7" fill="#7d93a6"/><text x="68" y="246" font-size="14" fill="#dbe7f0">Game-Zentrale</text>
+  <circle cx="52" cy="281" r="7" fill="#7d93a6"/><text x="68" y="286" font-size="14" fill="#dbe7f0">NAS</text>
+  <circle cx="52" cy="321" r="7" fill="#7d93a6"/><text x="68" y="326" font-size="14" fill="#dbe7f0">ARENA</text>
+  <circle cx="52" cy="361" r="7" fill="#7d93a6"/><text x="68" y="366" font-size="14" fill="#dbe7f0">PC-Fernzugriff</text>
+  <circle cx="52" cy="401" r="7" fill="#7d93a6"/><text x="68" y="406" font-size="14" fill="#dbe7f0">Einstellungen</text>
+  <rect x="32" y="700" width="208" height="56" rx="9" fill="#14324a"/>
+  <text x="44" y="724" font-size="12" fill="#2fe0b4" font-weight="600">Thorbens PC</text>
+  <text x="44" y="742" font-size="11" fill="#7d93a6">verbunden über LAN</text>
+
+  <!-- Chat-Bereich -->
+  <text x="272" y="102" font-size="16" font-weight="600" fill="#dbe7f0">Chat mit lokaler KI</text>
+  <text x="272" y="120" font-size="11" fill="#7d93a6">Ollama · 127.0.0.1:11434 · Modell: mistral-large-4</text>
+  <!-- User-Bubble -->
+  <rect x="520" y="142" width="360" height="46" rx="14" fill="#14324a"/>
+  <text x="536" y="170" font-size="13" fill="#dbe7f0">Welche Spiele liegen auf meinem NAS?</text>
+  <!-- LARA-Bubble -->
+  <rect x="272" y="204" width="608" height="150" rx="14" fill="#102435" stroke="#1d3a4d" stroke-width="1.5"/>
+  <circle cx="296" cy="230" r="10" fill="#2fe0b4"/>
+  <text x="314" y="235" font-size="13" font-weight="700" fill="#2fe0b4">LARA</text>
+  <text x="360" y="235" font-size="11" fill="#7d93a6">lokal · ohne Internet</text>
+  <text x="292" y="262" font-size="13" fill="#dbe7f0">42 Spiele gefunden (Steam, Epic, GOG). Auf dem NAS liegen</text>
+  <text x="292" y="282" font-size="13" fill="#dbe7f0">3 Freigaben (192.168.1.50), 2,1 TB frei. Zuletzt gespielt:</text>
+  <text x="292" y="302" font-size="13" fill="#dbe7f0">Elden Ring – 12 h diese Woche. Soll ich einen Backup-</text>
+  <text x="292" y="322" font-size="13" fill="#dbe7f0">Zeitplan für die Savegames auf dem NAS einrichten?</text>
+  <rect x="292" y="336" width="150" height="26" rx="13" fill="#14324a"/>
+  <text x="306" y="353" font-size="12" fill="#2fe0b4">Ja, Backup planen</text>
+  <!-- Eingabe -->
+  <rect x="272" y="700" width="608" height="46" rx="23" fill="#102435" stroke="#1d3a4d" stroke-width="1.5"/>
+  <text x="296" y="728" font-size="13" fill="#7d93a6">Nachricht an LARA …</text>
+  <circle cx="856" cy="723" r="14" fill="#2fe0b4"/>
+  <path d="M851 723 l10 -5 v10 z" fill="#0b1a28"/>
+
+  <!-- Rechte Status-Spalte -->
+  <text x="912" y="102" font-size="14" font-weight="600" fill="#dbe7f0">Status</text>
+  <!-- Karte KI -->
+  <rect x="900" y="118" width="340" height="96" rx="12" fill="#102435" stroke="#1d3a4d" stroke-width="1.5"/>
+  <text x="918" y="144" font-size="13" font-weight="600" fill="#dbe7f0">Lokale KI</text>
+  <circle cx="922" cy="168" r="5" fill="#28c840"/>
+  <text x="934" y="172" font-size="12" fill="#2fe0b4">verbunden · Ollama 127.0.0.1:11434</text>
+  <text x="918" y="196" font-size="12" fill="#7d93a6">Modell: mistral-large-4 · Antwort lokal</text>
+  <!-- Karte NAS -->
+  <rect x="900" y="228" width="340" height="96" rx="12" fill="#102435" stroke="#1d3a4d" stroke-width="1.5"/>
+  <text x="918" y="254" font-size="13" font-weight="600" fill="#dbe7f0">NAS</text>
+  <circle cx="922" cy="278" r="5" fill="#28c840"/>
+  <text x="934" y="282" font-size="12" fill="#2fe0b4">192.168.1.50 · 3 Freigaben erkannt</text>
+  <text x="918" y="306" font-size="12" fill="#7d93a6">2,1 TB frei · SMB · nur im LAN</text>
+  <!-- Karte Game-Zentrale -->
+  <rect x="900" y="338" width="340" height="96" rx="12" fill="#102435" stroke="#1d3a4d" stroke-width="1.5"/>
+  <text x="918" y="364" font-size="13" font-weight="600" fill="#dbe7f0">Game-Zentrale</text>
+  <circle cx="922" cy="388" r="5" fill="#f4c04e"/>
+  <text x="934" y="392" font-size="12" fill="#f4c04e">42 Spiele · Steam + Epic + GOG</text>
+  <text x="918" y="416" font-size="12" fill="#7d93a6">Spielstände liegen auf dem NAS</text>
+  <!-- Karte Setup -->
+  <rect x="900" y="448" width="340" height="110" rx="12" fill="#14324a" stroke="#2fe0b4" stroke-width="1.5"/>
+  <text x="918" y="476" font-size="13" font-weight="700" fill="#2fe0b4">Setup: 1 Doppelklick</text>
+  <text x="918" y="500" font-size="12" fill="#dbe7f0">EINRICHTEN.bat installiert und verknüpft</text>
+  <text x="918" y="518" font-size="12" fill="#dbe7f0">alles von allein (KI-Server, NAS, Spiele).</text>
+  <text x="918" y="544" font-size="11" fill="#7d93a6">kein Konto · keine Cloud · nur localhost/LAN</text>
+</svg>

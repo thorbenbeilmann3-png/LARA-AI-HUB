@@ -6,6 +6,18 @@ Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt 
 
 Neueste Einträge oben. Jeder Eintrag nennt, wer was geändert hat, wo es liegt und wie es geprüft wurde. Den aktuellen Gesamtstand beschreibt `PROJECT-STATUS.md`. Die Einträge bis zum 08.11.2026 stehen ausführlich in `docs/AI_SHARED_HANDOFF.md` (Branch `claude/pc-thorben-setup-i4qwi5`).
 
+## 2026-11-14
+
+### Vibe: PC-Hub-Mockup + Einrichtungs-Zielbild (Entwurf)
+
+| Angabe | Wert |
+|---|---|
+| Dateien | `docs/pc-hub-mockup.svg`, `docs/PC-EINRICHTUNG.md` |
+| Branch | `vibe/pc-hub-mockup-5076dc` |
+| Inhalt | Mockup der PC-Oberfläche (Chat mit lokaler KI, NAS, Game-Zentrale, 1-Klick-Setup `EINRICHTEN.bat`) plus Doku des Ziel-Setups „PC mit einem Doppelklick vollwertig eingerichtet“ |
+| Geprüft | SVG ist wohlgeformtes XML (minidom), rendert auf GitHub/im Browser |
+| Status | Nur Entwurf/Mockup – keine lauffähige PC-Software; „LARA für Windows“ bleibt laut `PROJECT-STATUS.md` offen, PC-Seite läuft über `PC-Tweaker` |
+
 ## 2026-11-09
 
 ### Claude: F18-Testversion 64fe56d dokumentiert
