@@ -16,6 +16,7 @@ from worker.logic.review import (
     DEFAULT_MODELS,
     build_overall,
     build_user_prompt,
+    extract_text_content,
     merge_findings,
     parse_findings,
     parse_overall,
@@ -133,6 +134,36 @@ class TestParseFindings(unittest.TestCase):
         )
         findings = parse_findings("m", text)
         self.assertEqual(findings[0].schwere, "wichtig")
+
+
+class TestExtractTextContent(unittest.TestCase):
+    """Extraktion des Antworttexts aus strukturiertem content (mistral-large-4)."""
+
+    def test_einfacher_text(self):
+        self.assertEqual(extract_text_content("Antwort"), "Antwort")
+
+    def test_strukturierte_teile_mit_thinking(self):
+        content = [
+            {"thinking": [{"text": "Ich ueberlege ..."}]},
+            {"text": [{"text": "Nummer: 1\nOrt: X"}]},
+        ]
+        self.assertEqual(extract_text_content(content), "Nummer: 1\nOrt: X")
+
+    def test_text_als_string_teil(self):
+        content = [
+            {"thinking": [{"text": "Ueberlegung"}]},
+            {"text": "Nummer: 1"},
+        ]
+        self.assertEqual(extract_text_content(content), "Nummer: 1")
+
+    def test_thinking_allein_liefert_leer(self):
+        # Thinking-Anteile duerfen nicht als Befunde missverstanden werden.
+        self.assertEqual(
+            extract_text_content([{"thinking": [{"text": "nur Gedanke"}]}]), ""
+        )
+
+    def test_unbekannter_inhalt_liefert_leer(self):
+        self.assertEqual(extract_text_content(42), "")
 
 
 class TestParseOverall(unittest.TestCase):

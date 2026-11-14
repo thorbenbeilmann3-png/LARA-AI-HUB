@@ -217,6 +217,39 @@ def parse_findings(model: str, review_text: str) -> list[Finding]:
     return findings
 
 
+def extract_text_content(content: object) -> str:
+    """Extrahiert den Antworttext aus content (str oder strukturierte Teile).
+
+    mistral-large-4 liefert message.content als Liste strukturierter
+    Teile, unter anderem mit 'thinking'-Schlussfolgerungen (Reasoning).
+    Extrahiert werden ausschliesslich Textinhalte unter den Schluesseln
+    'text' und 'content'; 'thinking' wird bewusst uebergangen, weil die
+    Schlussfolgerungen nicht die Befundliste sind. Nichts wird dabei
+    erfunden oder ergaenzt.
+    """
+    if isinstance(content, str):
+        return content
+
+    def _flatten(node: object) -> str:
+        if isinstance(node, str):
+            return node
+        if isinstance(node, list):
+            return "\n".join(s for s in (_flatten(x) for x in node) if s)
+        if isinstance(node, dict):
+            out: list[str] = []
+            for key in ("text", "content"):
+                if key in node:
+                    text = _flatten(node[key])
+                    if text:
+                        out.append(text)
+            return "\n".join(out)
+        return ""
+
+    if isinstance(content, list):
+        return _flatten(content)
+    return ""
+
+
 def parse_overall(review_text: str) -> str:
     """Extrahiert die Zeile 'Gesamt: ...' aus einer Modellantwort."""
     for line in review_text.splitlines():

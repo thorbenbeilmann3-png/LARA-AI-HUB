@@ -20,6 +20,7 @@ from worker.logic.review import (
     REVIEW_SYSTEM_PROMPT,
     build_overall,
     build_user_prompt,
+    extract_text_content,
     merge_findings,
     parse_findings,
     parse_overall,
@@ -71,9 +72,10 @@ async def review_with_model(
 ) -> str:
     """Ein Modell prueft den Prompt und liefert Rohtext zurueck.
 
-    Liegt kein verwertbarer Text vor (leer oder anderes Feldformat),
-    wird statt eines erfundenen Ergebnisses eine Diagnose der Rohantwort
-    zurueckgegeben, damit die Ursache nachvollziehbar ist.
+    mistral-large-4 antwortet mit strukturierten content-Teilen inklusive
+    'thinking'; extract_text_content zieht daraus den Antworttext. Bleibt
+    kein verwertbarer Text uebrig, wird statt eines erfundenen Ergebnisses
+    eine gekuerzte Diagnose der Rohantwort zurueckgegeben.
     """
     response = await client.chat.complete_async(
         model=model,
@@ -82,14 +84,27 @@ async def review_with_model(
             {"role": "user", "content": build_user_prompt(prompt, criteria)},
         ],
     )
-    content = response.choices[0].message.content
-    if isinstance(content, str) and content.strip():
+    content = extract_text_content(response.choices[0].message.content)
+    if content.strip():
         return content
     try:
-        dump = response.model_dump_json(exclude_none=True)
+        import json
+
+        data = response.model_dump(exclude_none=True)
+
+        def _shorten(node):
+            if isinstance(node, dict):
+                return {k: _shorten(v) for k, v in node.items()}
+            if isinstance(node, list):
+                return [_shorten(x) for x in node]
+            if isinstance(node, str) and len(node) > 400:
+                return node[:400] + "...[gekuerzt]"
+            return node
+
+        dump = json.dumps(_shorten(data), ensure_ascii=False)
     except Exception:
         dump = repr(response)
-    return "DIAGNOSE_ROHANTWORT: " + dump[:8000]
+    return "DIAGNOSE_ROHANTWORT: " + dump[:20000]
 
 
 @workflows.workflow.define(

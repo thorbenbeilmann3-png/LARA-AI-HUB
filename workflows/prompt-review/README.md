@@ -1,6 +1,6 @@
 # THOR Prompt Review (Mistral-Workflow)
 
-Version: 0.3.0
+Version: 0.4.0
 
 ## Zweck
 
@@ -56,14 +56,17 @@ Eingabe (Workflow `thor-prompt-review`):
 `criteria` und `models` sind optional; ohne Angabe gelten die acht Standard-
 kriterien und die drei Standardmodelle. Ausgabe: `models_used`,
 `criteria_used`, `findings` (Feld je Befund: model, ort, schwere, grund,
-vorschlag) und `overall` (deterministische Gesamteinschaetzung).
+vorschlag), `overall` (deterministische Gesamteinschaetzung) und
+`raw_reviews` (unveraenderte Rohtexte je Modell, Diagnose).
 
-## Formatbindung und tolerantes Parsing (ab 0.3.0)
+## Formatbindung und tolerantes Parsing (0.3.0/0.4.0)
 
 Erfahrungsgemaess antworteten `magistral-medium-latest` und
 `mistral-small-latest` formatkonform, waehrend `mistral-large-4` wiederholt vom
-vorgegebenen Befundformat abwich (Format abweichend, Antworten wurden verworfen).
-Version 0.3.0 greift deshalb an zwei Stellen ein:
+vorgegebenen Befundformat abwich (Format abweichend, Antworten wurden verworfen);
+spaeter zeigte die Diagnose, dass mistral-large-4 als Reasoning-Modell
+strukturierte content-Teile liefert. Die Versionen 0.3.0/0.4.0 greifen
+deshalb an drei Stellen ein:
 
 1. Verschaerfte Systemanweisung fuer alle Modelle: keine Markdown-Auszeichnung,
    Antwort beginnt unmittelbar mit `Nummer: 1`, ausschliesslich die Feldnamen
@@ -76,21 +79,28 @@ Version 0.3.0 greift deshalb an zwei Stellen ein:
    Befund) sowie an wiederholten `Ort:`-Zeilen erkannt; Schwereangaben mit
    Zusatz wie `wichtig, da ...` werden erkannt. Unbrauchbare Bloecke werden
    weiterhin verworfen; es werden keine Befunde erfunden oder aufgewertet.
+3. Strukturtolerante Textextraktion (ab 0.4.0): `mistral-large-4` antwortet
+   als Reasoning-Modell mit strukturierten content-Teilen, die zunaechst
+   `thinking`-Schlussfolgerungen enthalten. `extract_text_content` zieht
+   ausschliesslich Textinhalte unter den Schluesseln `text` und `content`
+   heran und uebergeht `thinking`; Reasoning-Anteile werden nicht als
+   Befunde missverstanden. Die Ausgabe enthaelt zusaetzlich `raw_reviews`
+   mit den unveraenderten Rohtexten je Modell, damit Formatabweichungen
+   nachvollziehbar sind statt nur als fehlender Beitrag zu erscheinen.
 
 ## Tests
 
-- 17 unittest-Tests (`python3 -m unittest discover -s tests`), lokal
+- 22 unittest-Tests (`python3 -m unittest discover -s tests`), lokal
   erfolgreich, u. a. Regressionstest zur Befundzaehlung (Zaehler beginnen bei
-  0) sowie Tests fuer Markdown-Antworten, Antworten ohne Nummerierung,
-   Schwereangaben mit Zusatz und unbrauchbare Antworten.
+  0), Tests fuer Markdown-Antworten, Antworten ohne Nummerierung,
+  Schwereangaben mit Zusatz, unbrauchbare Antworten sowie die Textextraktion
+  aus strukturierten content-Teilen mit `thinking`.
 
 Einschraenkung: die SDK-Integration (`mistralai-workflows`, Activities,
 Managed Deployment) ist lokal nicht ausfuehrbar; sie wird ausschliesslich im
-Managed Deployment von Mistral getestet. Bekannte Einschaenkung zu
-`mistral-large-4`: trotz verschaeerter Systemanweisung und tolerantem Parsing
-kann das Modell weiterhin vom Format abweichen; Rohantworten sind in den
-Workflow-Ereignissen nicht einsehbar, daher kann eine Abweichung nur als
-fehlender Modellbeitrag gemeldet werden, nicht mit Voltext belegt.
+Managed Deployment von Mistral getestet. Formatabweichungen einzelner Modelle
+sind seit 0.4.0 ueber `raw_reviews` mit Voltext nachvollziehbar; liefert ein
+Modell ueberhaupt keinen Text, greift eine gekuerzte Strukturdiagnose.
 
 ## Deployment
 
@@ -110,3 +120,6 @@ fehlender Modellbeitrag gemeldet werden, nicht mit Voltext belegt.
   `mistral-large-latest`
 - 0.3.0: verschaerfte Systemanweisung und tolerantes Parsing zur Formatbindung
   von Mistral Large 4; Testumfang auf 17 Tests erweitert
+- 0.4.0: Ursachendiagnose umgesetzt - mistral-large-4 antwortet mit
+  strukturierten content-Teilen inklusive thinking; strukturtolerante
+  Textextraktion, Rohtexte in der Ausgabe; Testumfang auf 22 Tests erweitert
