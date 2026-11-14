@@ -45,12 +45,18 @@ class PromptReviewInput(BaseModel):
 
 
 class PromptReviewOutput(BaseModel):
-    """Ausgabe: Befunde aller Modelle und die Gesamteinschaetzung."""
+    """Ausgabe: Befunde aller Modelle und die Gesamteinschaetzung.
+
+    raw_reviews enthaelt die unveraenderten Rohtexte je Modell; darueber
+    lassen sich Formatabweichungen (z. B. von mistral-large-4) nachvollziehen,
+    statt sie nur als fehlenden Beitrag zu vermuten.
+    """
 
     models_used: list[str]
     criteria_used: list[str]
     findings: list[FindingOut]
     overall: str
+    raw_reviews: dict[str, str]
 
 
 @workflows.activity(
@@ -112,4 +118,5 @@ class PromptReviewWorkflow:
             criteria_used=criteria,
             findings=[FindingOut(**f.to_dict()) for f in findings],
             overall=overall,
+            raw_reviews={model: raw for model, raw in reviews},
         )
