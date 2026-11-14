@@ -107,6 +107,25 @@ class TestBuildOverall(unittest.TestCase):
         overall = build_overall([], {})
         self.assertIn("0 Befunde", overall)
 
+    def test_zaehlung_beginnt_bei_null(self):
+        # Regressionstest: Zaehler muessen bei 0 beginnen, nicht bei der
+        # Sortierreihenfolge (frueherer Fehler: 1/2 statt 0/0).
+        findings = merge_findings([
+            ("m", parse_findings(
+                "m",
+                "Nummer: 1\nOrt: A\nSchwere: kritisch\nGrund: G\nVorschlag: V\n\n"
+                "Nummer: 2\nOrt: B\nSchwere: kritisch\nGrund: G\nVorschlag: V\n\n"
+                "Nummer: 3\nOrt: C\nSchwere: wichtig\nGrund: G\nVorschlag: V\n\n"
+                "Nummer: 4\nOrt: D\nSchwere: wichtig\nGrund: G\nVorschlag: V\n\n"
+                "Nummer: 5\nOrt: E\nSchwere: gering\nGrund: G\nVorschlag: V\n\n"
+                "Nummer: 6\nOrt: F\nSchwere: gering\nGrund: G\nVorschlag: V",
+            )),
+        ])
+        overall = build_overall(findings, {})
+        self.assertIn("6 Befunde gesamt", overall)
+        self.assertIn("(2 kritisch, 2 wichtig, 2 gering)", overall)
+        self.assertNotIn("(2 kritisch, 3 wichtig", overall)
+
 
 if __name__ == "__main__":
     unittest.main()

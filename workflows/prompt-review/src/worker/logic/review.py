@@ -156,8 +156,12 @@ def merge_findings(
 
 
 def build_overall(findings: list[Finding], per_model_overall: dict[str, str]) -> str:
-    """Erstellt die rule-basierte Gesamteinschaetzung (deterministisch)."""
-    counts = {"kritisch": 0, "wichtig": 1, "gering": 2}
+    """Erstellt die rule-basierte Gesamteinschaetzung (deterministisch).
+
+    Die Zaehler beginnen bei 0. (Regression: fruehere Version initialisierte
+    'wichtig' mit 1 und 'gering' mit 2 und verzerrte so die Zaehlung.)
+    """
+    counts = {"kritisch": 0, "wichtig": 0, "gering": 0}
     for f in findings:
         counts[f.schwere] = counts.get(f.schwere, 0) + 1
     parts = [
