@@ -90,7 +90,7 @@ deshalb an drei Stellen ein:
 
 ## Tests
 
-- 22 unittest-Tests (`python3 -m unittest discover -s tests`), lokal
+- 23 unittest-Tests (`python3 -m unittest discover -s tests`), lokal
   erfolgreich, u. a. Regressionstest zur Befundzaehlung (Zaehler beginnen bei
   0), Tests fuer Markdown-Antworten, Antworten ohne Nummerierung,
   Schwereangaben mit Zusatz, unbrauchbare Antworten sowie die Textextraktion
@@ -122,4 +122,4 @@ Modell ueberhaupt keinen Text, greift eine gekuerzte Strukturdiagnose.
   von Mistral Large 4; Testumfang auf 17 Tests erweitert
 - 0.4.0: Ursachendiagnose umgesetzt - mistral-large-4 antwortet mit
   strukturierten content-Teilen inklusive thinking; strukturtolerante
-  Textextraktion, Rohtexte in der Ausgabe; Testumfang auf 22 Tests erweitert
+  Textextraktion, Rohtexte in der Ausgabe; Testumfang auf 23 Tests erweitert
