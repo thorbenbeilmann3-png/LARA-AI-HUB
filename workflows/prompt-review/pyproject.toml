@@ -1,0 +1,18 @@
+[project]
+name = "thor-prompt-review"
+version = "0.1.0"
+description = "Mistral Workflow: mehrstufige Prompt-Pruefung eines Projektauftrags mit mehreren Mistral-Modellen (THOR AI / LARA)"
+requires-python = ">=3.12"
+dependencies = [
+    "mistralai-workflows>=3.10",
+    "mistralai>=3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
