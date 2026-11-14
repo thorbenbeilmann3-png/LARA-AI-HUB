@@ -1,6 +1,6 @@
 # THOR Prompt Review – Mistral Workflow
 
-Version 0.1.1, Stand 14.11.2026. Projekt im Auftrag von Thorben (THOR AI / LARA),
+Version 0.2.0, Stand 14.11.2026. Projekt im Auftrag von Thorben (THOR AI / LARA),
 entwickelt von der Steuerungsinstanz (Vibe) nach dem 14-Schritte-Ablauf.
 
 ## Zweck
@@ -26,6 +26,18 @@ workflows/prompt-review/
 └── tests/test_logic.py     # Tests der reinen Logik (stdlib unittest)
 ```
 
+## Pruefmodelle
+
+Standardmodelle (Version 0.2.0):
+
+- mistral-large-4 – expliziter Version-Pin auf Mistral Large 4 (GA seit
+  05.11.2026; API-Namen laut Doku: mistral-large-4, mistral-large-4-0,
+  mistral-large-latest). Der Alias mistral-large-latest bezeichnet derzeit
+  dasselbe Modell und wird bewusst nicht zusaetzlich angefragt, um doppelte
+  Anfragen an dasselbe Modell zu vermeiden.
+- magistral-medium-latest
+- mistral-small-latest
+
 ## Verwendung
 
 Eingabe (JSON):
@@ -39,7 +51,7 @@ Eingabe (JSON):
 ```
 
 `criteria` und `models` sind optional; Standard sind die acht Kriterien und
-die Modelle mistral-large-latest, magistral-medium-latest, mistral-small-latest.
+die drei oben genannten Modelle.
 
 Ausgabe: `models_used`, `criteria_used`, `findings` (model, ort, schwere
 kritisch/wichtig/gering, grund, vorschlag) und `overall`.
@@ -66,7 +78,7 @@ uv run pytest                                   # Tests
 ## Tests und Pruefstatus
 
 - Logiktests (tests/test_logic.py): lokal ausgefuehrt und bestanden
-  (Parsing, Merge, Gesamteinschaetzung, Fehlerfaelle).
+  (Parsing, Merge, Gesamteinschaetzung, Fehlerfaelle, Pruefmodelle).
 - SDK-Integration (Workflow-Registrierung, Modellaufrufe): nicht lokal
   getestet, da die Sandbox keine Paketinstallation zulaesst.
 - Runtime-Befund aus dem ersten Deployment (14.11.2026): Ein Entrypoint

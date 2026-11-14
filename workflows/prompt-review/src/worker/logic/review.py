@@ -14,7 +14,11 @@ DEFAULT_CRITERIA = [
 ]
 
 DEFAULT_MODELS = [
-    "mistral-large-latest",
+    # Expliziter Version-Pin auf Mistral Large 4 (GA seit 05.11.2026).
+    # API-Namen laut Doku: mistral-large-4, mistral-large-4-0, mistral-large-latest.
+    # Der Alias mistral-large-latest bezeichnet derzeit dasselbe Modell; er wird
+    # bewusst nicht zusaetzlich aufgefuehrt, um doppelte Anfragen zu vermeiden.
+    "mistral-large-4",
     "magistral-medium-latest",
     "mistral-small-latest",
 ]

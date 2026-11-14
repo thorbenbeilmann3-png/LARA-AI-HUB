@@ -13,6 +13,7 @@ import unittest
 
 from worker.logic.review import (
     DEFAULT_CRITERIA,
+    DEFAULT_MODELS,
     build_overall,
     build_user_prompt,
     merge_findings,
@@ -39,6 +40,17 @@ LEERE_ANTWORT = ""
 UNBRAUCHBARE_ANTWORT = "Hier steht alles Moegliche, aber kein Format."
 
 
+class TestDefaultModels(unittest.TestCase):
+    def test_mistral_large_4_enthalten(self):
+        # Anforderung des Nutzers: Mistral Large 4 explizit als Pruefmodell.
+        self.assertIn("mistral-large-4", DEFAULT_MODELS)
+        # Keine doppelte Anfrage an dasselbe Modell:
+        self.assertNotIn("mistral-large-latest", DEFAULT_MODELS)
+
+    def test_drei_modelle(self):
+        self.assertEqual(len(DEFAULT_MODELS), 3)
+
+
 class TestBuildUserPrompt(unittest.TestCase):
     def test_enthaelt_kriterien_und_format(self):
         text = build_user_prompt("Mein Auftrag", DEFAULT_CRITERIA)
@@ -51,11 +63,11 @@ class TestBuildUserPrompt(unittest.TestCase):
 
 class TestParseFindings(unittest.TestCase):
     def test_vollstaendige_antwort(self):
-        findings = parse_findings("mistral-large-latest", BEISPIEL_ANTWORT)
+        findings = parse_findings("mistral-large-4", BEISPIEL_ANTWORT)
         self.assertEqual(len(findings), 2)
         self.assertEqual(findings[0].schwere, "kritisch")
         self.assertEqual(findings[1].schwere, "wichtig")
-        self.assertEqual(findings[0].model, "mistral-large-latest")
+        self.assertEqual(findings[0].model, "mistral-large-4")
         self.assertIn("Stromkosten", findings[0].grund)
         self.assertNotIn("Gesamt", findings[0].ort)
 
