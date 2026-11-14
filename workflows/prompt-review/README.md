@@ -1,107 +1,112 @@
-# THOR Prompt Review – Mistral Workflow
+# THOR Prompt Review (Mistral-Workflow)
 
-Version 0.2.0, Stand 14.11.2026. Projekt im Auftrag von Thorben (THOR AI / LARA),
-entwickelt von der Steuerungsinstanz (Vibe) nach dem 14-Schritte-Ablauf.
+Version: 0.3.0
 
 ## Zweck
 
-Dieser Mistral-Workflow prueft einen Projektauftrag-Prompt (z. B. den
-THOR-AI-Masterauftrag) automatisch mit mehreren Mistral-Modellen. Jedes Modell
-prueft unabhaengig nach acht festen Kriterien (Klarheit, Widerspruchsfreiheit,
-Vollstaendigkeit, Messbarkeit, Machbarkeit, Taeuschungsrobustheit, Sicherheit,
-Struktur). Die Antworten werden deterministisch geparst und zu einer
-Gesamtuebersicht zusammengefuehrt. Die Auswertung erfindet nichts: was die
-Modelle nicht liefern, taucht nicht in den Befunden auf.
-
-## Struktur
-
-```text
-workflows/prompt-review/
-├── Dockerfile              # Baut den Worker-Container (managed deployment)
-├── pyproject.toml          # Abhaengigkeiten und pytest-Konfiguration
-├── main.py                 # Entrypoint: run_worker(discover_all_workflows...)
-├── src/worker/
-│   ├── workflows/prompt_review.py   # Workflow + Modellaktivitaet (SDK)
-│   └── logic/review.py              # Reine Logik, ohne SDK (isoliert testbar)
-└── tests/test_logic.py     # Tests der reinen Logik (stdlib unittest)
-```
+Dieser Workflow prueft einen Projektauftrag-Prompt (z. B. den THOR-AI-Masterauftrag)
+mit mehreren Mistral-Modellen unabhaengig voneinander nach acht festen Kriterien
+(Klarheit, Widerspruchsfreiheit, Vollstaendigkeit, Messbarkeit, Machbarkeit,
+Robustheit gegen Taeuschung, Sicherheit, Struktur). Die Befunde werden
+deterministisch geparst, zusammengefuehrt und nach Schwere sortiert. Nichts wird
+dabei erfunden: unbrauchbare oder leere Modellantworten werden verworfen und
+ggf. ehrlich als fehlend gemeldet.
 
 ## Pruefmodelle
 
-Standardmodelle (Version 0.2.0):
+- `mistral-large-4` (expliziter Version-Pin; API-Namen laut Doku:
+  `mistral-large-4`, `mistral-large-4-0`, `mistral-large-latest`, GA seit
+  05.11.2026, Kontext 1M)
+- `magistral-medium-latest`
+- `mistral-small-latest`
 
-- mistral-large-4 – expliziter Version-Pin auf Mistral Large 4 (GA seit
-  05.11.2026; API-Namen laut Doku: mistral-large-4, mistral-large-4-0,
-  mistral-large-latest). Der Alias mistral-large-latest bezeichnet derzeit
-  dasselbe Modell und wird bewusst nicht zusaetzlich angefragt, um doppelte
-  Anfragen an dasselbe Modell zu vermeiden.
-- magistral-medium-latest
-- mistral-small-latest
+Der Alias `mistral-large-latest` wird bewusst nicht zusaetzlich aufgefuehrt,
+um doppelte Anfragen an dasselbe Modell zu vermeiden.
+
+## Struktur
+
+```
+workflows/prompt-review/
+├── Dockerfile                      # Build-Kontext fuer das Managed Deployment
+├── main.py                         # Worker-Entrypoint (heisst bewusst nicht worker.py)
+├── pyproject.toml                  # Projekt- und pytest-Konfiguration
+├── README.md
+├── src/worker/
+│   ├── workflows/prompt_review.py  # Workflow-Definition (mistralai-workflows SDK)
+│   └── logic/review.py             # reine Logik: Kriterien, Parsing, Merge, Overall
+└── tests/test_logic.py            # unittest-Tests der reinen Logik
+```
+
+`main.py` heisst bewusst nicht `worker.py`: eine gleichnamige Datei haette das
+Paket `worker` unter `src/` verdeckt und den ersten Deployment-Versuch zum
+Scheitern gebracht.
 
 ## Verwendung
 
-Eingabe (JSON):
+Eingabe (Workflow `thor-prompt-review`):
 
 ```json
 {
-  "prompt": "<vollstaendiger Text des zu pruefenden Auftrags>",
+  "prompt": "<vollstaendiger zu pruefender Prompt>",
   "criteria": null,
   "models": null
 }
 ```
 
-`criteria` und `models` sind optional; Standard sind die acht Kriterien und
-die drei oben genannten Modelle.
+`criteria` und `models` sind optional; ohne Angabe gelten die acht Standard-
+kriterien und die drei Standardmodelle. Ausgabe: `models_used`,
+`criteria_used`, `findings` (Feld je Befund: model, ort, schwere, grund,
+vorschlag) und `overall` (deterministische Gesamteinschaetzung).
 
-Ausgabe: `models_used`, `criteria_used`, `findings` (model, ort, schwere
-kritisch/wichtig/gering, grund, vorschlag) und `overall`.
+## Formatbindung und tolerantes Parsing (ab 0.3.0)
 
-## Lokale Entwicklung
+Erfahrungsgemaess antworteten `magistral-medium-latest` und
+`mistral-small-latest` formatkonform, waehrend `mistral-large-4` wiederholt vom
+vorgegebenen Befundformat abwich (Format abweichend, Antworten wurden verworfen).
+Version 0.3.0 greift deshalb an zwei Stellen ein:
 
-```bash
-uv sync
-MISTRAL_API_KEY=... uv run python main.py      # lokaler Worker
-uv run pytest                                   # Tests
-```
+1. Verschaerfte Systemanweisung fuer alle Modelle: keine Markdown-Auszeichnung,
+   Antwort beginnt unmittelbar mit `Nummer: 1`, ausschliesslich die Feldnamen
+   Nummer, Ort, Schwere, Grund, Vorschlag, Schwere nur
+   kritisch/wichtig/gering, Abschluss mit `Gesamt: ...`.
+2. Toleranteres, weiterhin deterministisches Parsing haeufiger Abweichungen:
+   Markdown-Betonung (`**Fett**`, `## Ueberschriften`, Listensymbole) wird
+   entfernt; Blockgrenzen werden zusaetzlich an `Befund`-Ueberschriften,
+   Nummerierungspraefixen (`1.`, `1)`) vor Block-Startfeldern (Ort, Nummer,
+   Befund) sowie an wiederholten `Ort:`-Zeilen erkannt; Schwereangaben mit
+   Zusatz wie `wichtig, da ...` werden erkannt. Unbrauchbare Bloecke werden
+   weiterhin verworfen; es werden keine Befunde erfunden oder aufgewertet.
 
-## Bereitstellung (managed deployment)
+## Tests
 
-1. Mistral GitHub App auf dem Repository installieren und in der Konsole
-   eine GitHub-Credential hinterlegen.
-2. Bereitstellung mit Build-Kontext `workflows/prompt-review` und Dockerfile
-   `Dockerfile` erstellen (Revision: gemergter Branch-Stand).
-3. Der Worker authentifiziert sich automatisch ueber den injizierten
-   Service-Account-Token (mistralai-workflows >= 3.10 erforderlich).
-   Es wird kein API-Schluessel im Repository benoetigt.
-4. Voraussetzung seitens des Kontos: pay-as-you-go muss aktiviert sein.
+- 17 unittest-Tests (`python3 -m unittest discover -s tests`), lokal
+  erfolgreich, u. a. Regressionstest zur Befundzaehlung (Zaehler beginnen bei
+  0) sowie Tests fuer Markdown-Antworten, Antworten ohne Nummerierung,
+   Schwereangaben mit Zusatz und unbrauchbare Antworten.
 
-## Tests und Pruefstatus
+Einschraenkung: die SDK-Integration (`mistralai-workflows`, Activities,
+Managed Deployment) ist lokal nicht ausfuehrbar; sie wird ausschliesslich im
+Managed Deployment von Mistral getestet. Bekannte Einschaenkung zu
+`mistral-large-4`: trotz verschaeerter Systemanweisung und tolerantem Parsing
+kann das Modell weiterhin vom Format abweichen; Rohantworten sind in den
+Workflow-Ereignissen nicht einsehbar, daher kann eine Abweichung nur als
+fehlender Modellbeitrag gemeldet werden, nicht mit Voltext belegt.
 
-- Logiktests (tests/test_logic.py): lokal ausgefuehrt und bestanden
-  (Parsing, Merge, Gesamteinschaetzung, Fehlerfaelle, Pruefmodelle).
-- SDK-Integration (Workflow-Registrierung, Modellaufrufe): nicht lokal
-  getestet, da die Sandbox keine Paketinstallation zulaesst.
-- Runtime-Befund aus dem ersten Deployment (14.11.2026): Ein Entrypoint
-  `worker.py` im Hauptverzeichnis verdeckte das Paket `worker` aus `src/`
-  ('No module named worker.workflows; worker is not a package'), sodass kein
-  Workflow registriert wurde. Korrektur: Entrypoint heisst `main.py`;
-  Dockerfile und Aufruf entsprechend angepasst.
+## Deployment
 
-## Sicherheitsregeln
+- Repository: `thorbenbeilmann3-png/LARA-AI-HUB`, Branch
+  `feature/prompt-review-workflow`
+- Managed Deployment: `thor-prompt-review` mit `build_directory`
+  `workflows/prompt-review`, `dockerfile_path` `Dockerfile`
+- Der Worker benoetigt keinen API-Key im Repository: beim Managed Deployment
+  wird der Token des injizierten Service-Accounts verwendet.
 
-- Keine Schluessel, Tokens oder Passwoerter im Code, in Tests oder Logs.
-- Nur lesender Zugriff auf den Prompt-Inhalt; keine externen Zugriffe.
-- Deterministische Auswertung; keine erfundenen Befunde oder Prozentzahlen.
+## Versionsgeschichte
 
-## Bekannte Einschraenkungen
-
-- Die Modellantworten haengen vom jeweiligen Modell ab; unbrauchbare
-  Antwortformate werden uebersprungen (kein Fehler, aber weniger Befunde).
-- Aggregation zaehlt und sortiert nur; inhaltliche Deduplizierung erfolgt
-  bewusst regelbasiert und nicht durch ein weiteres Modell.
-
-## Naechste Schritte
-
-1. Pull Request pruefen und mergen.
-2. Managed Deployment auf dem korrigierten Stand ausfuehren und einen
-   Ausfuehrungstest mit dem THOR-AI-Masterauftrag v1.1 fahren.
+- 0.1.0: Initialversion (Entrypoint `worker.py`, fehlgeschlagen; umbenannt zu
+  `main.py`), Befundzaehlung korrigiert (Zaehler beginnen bei 0, inkl.
+  Regressionstest)
+- 0.2.0: `mistral-large-4` als expliziter Version-Pin statt
+  `mistral-large-latest`
+- 0.3.0: verschaerfte Systemanweisung und tolerantes Parsing zur Formatbindung
+  von Mistral Large 4; Testumfang auf 17 Tests erweitert

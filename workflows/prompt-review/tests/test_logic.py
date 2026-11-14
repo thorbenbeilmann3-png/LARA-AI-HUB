@@ -36,6 +36,35 @@ Vorschlag: Zustandsweise ergaenzen.
 
 Gesamt: Der Auftrag ist insgesamt tragfaehig, hat aber zwei Luecken."""
 
+# Antwortstil, wie ihn groessere Modelle haeufig liefern: Markdown-Betonung
+# und Aufzaehlungspraefixe statt der 'Nummer:'-Zeilen.
+MARKDOWN_ANTWORT = """Hier meine Pruefung:
+
+### Befund 1
+- **Ort:** Abschnitt 7, Hardwareinventur
+- **Schwere:** kritisch
+- **Grund:** Die Hardwareangaben sind unbestaetigt.
+- **Vorschlag:** CPU-Generation zuerst pruefen.
+
+### Befund 2
+1) Ort: Abschnitt 13, Sicherheit
+2) Schwere: wichtig, da Secrets ungeschuetzt sind
+3) Grund: Keine Speicherregeln fuer Secrets.
+4) Vorschlag: Verschluesselte Ablage vorschreiben.
+
+**Gesamt:** Der Auftrag ist gut, hat aber zwei Luecken."""
+
+# Befunde ohne jegliche Nummerierung, nur durch 'Ort:'-Zeilen getrennt.
+OHNE_NUMMERN_ANTWORT = """Ort: Abschnitt 2.1, Budget
+Schwere: wichtig
+Grund: Kein Messgeraet definiert.
+
+Ort: Abschnitt 12, Dashboard
+Schwere: gering
+Grund: 'dauerhaft' ist nicht definiert.
+
+Gesamt: Zwei kleinere Luecken."""
+
 LEERE_ANTWORT = ""
 UNBRAUCHBARE_ANTWORT = "Hier steht alles Moegliche, aber kein Format."
 
@@ -71,6 +100,21 @@ class TestParseFindings(unittest.TestCase):
         self.assertIn("Stromkosten", findings[0].grund)
         self.assertNotIn("Gesamt", findings[0].ort)
 
+    def test_markdown_antwort_wird_erkannt(self):
+        findings = parse_findings("mistral-large-4", MARKDOWN_ANTWORT)
+        self.assertEqual(len(findings), 2)
+        self.assertEqual(findings[0].schwere, "kritisch")
+        self.assertEqual(findings[1].schwere, "wichtig")
+        self.assertIn("Hardwareinventur", findings[0].ort)
+        self.assertIn("verschluesselte ablage", findings[1].vorschlag.lower())
+        self.assertNotIn("Gesamt", findings[0].ort)
+
+    def test_antwort_ohne_nummern_wird_erkannt(self):
+        findings = parse_findings("m", OHNE_NUMMERN_ANTWORT)
+        self.assertEqual(len(findings), 2)
+        self.assertEqual(findings[0].schwere, "wichtig")
+        self.assertEqual(findings[1].schwere, "gering")
+
     def test_leere_antwort_liefert_keine_befunde(self):
         self.assertEqual(parse_findings("m", LEERE_ANTWORT), [])
 
@@ -82,10 +126,21 @@ class TestParseFindings(unittest.TestCase):
         findings = parse_findings("m", text)
         self.assertEqual(findings[0].schwere, "gering")
 
+    def test_schwere_mit_zusatz_wird_erkannt(self):
+        text = (
+            "Nummer: 1\nOrt: X\nSchwere: Wichtig, da nicht messbar\n"
+            "Grund: G\nVorschlag: V"
+        )
+        findings = parse_findings("m", text)
+        self.assertEqual(findings[0].schwere, "wichtig")
+
 
 class TestParseOverall(unittest.TestCase):
     def test_gesamt_wird_extrahiert(self):
         self.assertIn("tragfaehig", parse_overall(BEISPIEL_ANTWORT))
+
+    def test_gesamt_mit_markdown_wird_extrahiert(self):
+        self.assertIn("zwei Luecken", parse_overall(MARKDOWN_ANTWORT))
 
     def test_fehlende_gesamtzeile(self):
         self.assertEqual(parse_overall("ohne gesamt"), "")

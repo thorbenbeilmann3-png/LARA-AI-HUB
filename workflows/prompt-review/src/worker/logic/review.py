@@ -1,6 +1,7 @@
 """Reine Pruef- und Auswertelogik ohne SDK-Abhaengigkeiten (isoliert testbar)."""
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 
 DEFAULT_CRITERIA = [
     "Klarheit: Sind alle Anweisungen eindeutig und frei von mehrdeutigen Formulierungen?",
@@ -27,11 +28,51 @@ REVIEW_SYSTEM_PROMPT = (
     "Du bist ein unabhaengiger, strenger Reviewer fuer Prompt-Qualitaet. "
     "Pruefe den angehaengten Projektauftrag ausschliesslich nach den genannten "
     "Kriterien. Fuehre keine Aenderungen am Text aus; liefere nur Befunde. "
-    "Erfinde keine Befunde und kennzeichne unsichere Aussagen als solche."
+    "Erfinde keine Befunde und kennzeichne unsichere Aussagen als solche.\n\n"
+    "Formatregeln, die strikt einzuhalten sind: Antworte ohne Markdown und ohne "
+    "Fett- oder Kursivdruck. Beginne deine Antwort unmittelbar mit 'Nummer: 1'. "
+    "Nutze ausschliesslich die Feldnamen Nummer, Ort, Schwere, Grund und "
+    "Vorschlag, jeweils gefolgt von einem Doppelpunkt. Als Schwere sind nur die "
+    "Werte kritisch, wichtig oder gering zulaessig. Schliesse mit der Zeile "
+    "'Gesamt: ...' ab. Keine Einleitungs-, Ueberschrifts- oder Abschiedszeilen."
 )
 
 SCHWERE_ORDER = {"kritisch": 0, "wichtig": 1, "gering": 2}
 VALID_SCHWERE = set(SCHWERE_ORDER)
+
+# Zeilenbeginn einer Aufzaehlung, z. B. "1. Ort: ..." oder "1) Ort: ...".
+_NUM_PREFIX = re.compile(r"^\d{1,3}[.)]\s")
+
+
+def _clean_line(line: str) -> str:
+    """Entfernt Markdown-Betonung aus einer Zeile und normalisiert Leerraum.
+
+    Betrifft ausschliesslich die Felderkennung: Sternchen, Unterstriche,
+    Rauten und fuehrende Listensymbole werden entfernt, doppelte Leerzeichen
+    zusammengefasst. Fuer die Befundwerte ist diese leichte Normalierung
+    bewusst akzeptiert; der Inhalt bleibt unveraendert.
+    """
+    cleaned = line.strip()
+    while cleaned and cleaned[0] in "*_#>-":
+        cleaned = cleaned[1:].lstrip()
+    cleaned = cleaned.replace("**", "").replace("*", "").replace("__", "_")
+    return " ".join(cleaned.split())
+
+
+def _normalize_schwere(raw: str) -> str:
+    """Ordnet die Schwereangabe einer der drei zulaessigen Stufen zu.
+
+    Exakte Treffer zuerst; danach Praefix-Treffer (z. B. 'wichtig, da ...').
+    Unbekannte Angaben werden wie bisher als 'gering' gewertet, nichts wird
+    erfunden oder aufgewertet.
+    """
+    low = raw.strip().lower()
+    if low in VALID_SCHWERE:
+        return low
+    for stufe in ("kritisch", "wichtig", "gering"):
+        if low.startswith(stufe):
+            return stufe
+    return "gering"
 
 
 @dataclass
@@ -72,49 +113,92 @@ def build_user_prompt(prompt: str, criteria: list[str]) -> str:
     )
 
 
-def _extract_field(block: str, name: str) -> str:
-    """Extrahiert 'Name: Wert' aus einem Befundblock (erste Zeile reicht)."""
-    for line in block.splitlines():
-        stripped = line.strip()
-        if stripped.lower().startswith(name.lower() + ":"):
-            return stripped[len(name) + 1:].strip()
+def _extract_field(block: list[str], name: str) -> str:
+    """Extrahiert 'Name: Wert' aus einem Befundblock (erste Trefferzeile)."""
+    prefix = name.lower() + ":"
+    for line in block:
+        low = line.lower()
+        if low.startswith(prefix):
+            return line[len(name) + 1:].strip()
+        idx = low.find(" " + prefix)
+        if idx >= 0:
+            return line[idx + 1 + len(name) + 1:].strip()
     return ""
+
+
+def _split_blocks(lines: list[str]) -> list[list[str]]:
+    """Teilt die normalisierten Zeilen in Befundbloecke auf.
+
+    Blockgrenzen sind: 'Nummer:', Aufzaehlungspraefixe ('1.', '1)'),
+    'Befund'-Ueberschriften sowie ein erneut auftretendes 'Ort:' innerhalb
+    eines Blocks (deckt Antworten ohne Nummern ab). 'Gesamt:'-Zeilen und
+    alles danach werden verworfen; erfunden wird nichts.
+    """
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    block_has_ort = False
+
+    def flush() -> None:
+        nonlocal current, block_has_ort
+        if current:
+            blocks.append(current)
+        current = []
+        block_has_ort = False
+
+    for line in lines:
+        low = line.lower()
+        if low.startswith("gesamt:"):
+            flush()
+            continue
+        if current:
+            starts_new = low.startswith("nummer:") or low.startswith("befund")
+            num_match = _NUM_PREFIX.match(low)
+            if num_match is not None:
+                # Ein Nummerierungspraefix beginnt nur dann einen neuen Block,
+                # wenn ein Block-Startfeld (Ort, Nummer, Befund) folgt.
+                # Fortsetzungsfelder wie '2) Schwere:' gehoeren zum laufenden
+                # Block; sonst wuerde jede nummerierte Zeile ein eigener,
+                # unbrauchbarer Block.
+                rest = low[num_match.end():]
+                starts_new = starts_new or rest.startswith(
+                    ("ort:", "nummer:", "befund")
+                )
+            starts_new = starts_new or (
+                low.startswith("ort:") and block_has_ort
+            )
+            if starts_new:
+                flush()
+        current.append(line)
+        if low.startswith("ort:"):
+            block_has_ort = True
+    flush()
+    return blocks
 
 
 def parse_findings(model: str, review_text: str) -> list[Finding]:
     """Parst die Modellantwort in strukturierte Befunde.
 
-    Erwartet Bloecke der Form 'Nummer: ...' bis 'Vorschlag: ...'.
-    Fehlerhafte Bloecke werden uebersprungen, nicht erfunden.
+    Erwartet Befundbloecke mit den Feldern Nummer, Ort, Schwere, Grund und
+    Vorschlag. Haeufige Formatabweichungen (Markdown-Betonung, Aufzaehlungs-
+    praefixe, fehlende Nummernzeile) werden toleriert; unbrauchbare Bloecke
+    werden uebersprungen, nichts wird erfunden.
     """
     findings: list[Finding] = []
     if not review_text or not review_text.strip():
         return findings
 
-    blocks: list[str] = []
-    current: list[str] = []
-    for line in review_text.splitlines():
-        if line.strip().lower().startswith("nummer:"):
-            if current:
-                blocks.append("\n".join(current))
-                current = []
-        current.append(line)
-    if current:
-        blocks.append("\n".join(current))
+    lines = [_clean_line(l) for l in review_text.splitlines()]
+    lines = [l for l in lines if l]
 
-    for block in blocks:
-        if block.strip().lower().startswith("gesamt:"):
-            continue
+    for block in _split_blocks(lines):
         rohnr_raw = _extract_field(block, "Nummer")
         ort = _extract_field(block, "Ort")
-        schwere = _extract_field(block, "Schwere").lower()
+        schwere = _normalize_schwere(_extract_field(block, "Schwere"))
         grund = _extract_field(block, "Grund")
         vorschlag = _extract_field(block, "Vorschlag")
 
         if not ort and not grund:
             continue  # unbrauchbarer Block, kein Befund
-        if schwere not in VALID_SCHWERE:
-            schwere = "gering"
         try:
             rohnr = int(rohnr_raw) if rohnr_raw else 0
         except ValueError:
@@ -136,9 +220,9 @@ def parse_findings(model: str, review_text: str) -> list[Finding]:
 def parse_overall(review_text: str) -> str:
     """Extrahiert die Zeile 'Gesamt: ...' aus einer Modellantwort."""
     for line in review_text.splitlines():
-        stripped = line.strip()
-        if stripped.lower().startswith("gesamt:"):
-            return stripped[len("Gesamt") + 1:].strip()
+        cleaned = _clean_line(line)
+        if cleaned.lower().startswith("gesamt:"):
+            return cleaned[len("Gesamt") + 1:].strip()
     return ""
 
 
