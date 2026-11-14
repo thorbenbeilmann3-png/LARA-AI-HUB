@@ -1,6 +1,6 @@
 # THOR Prompt Review – Mistral Workflow
 
-Version 0.1.0, Stand 14.11.2026. Projekt im Auftrag von Thorben (THOR AI / LARA),
+Version 0.1.1, Stand 14.11.2026. Projekt im Auftrag von Thorben (THOR AI / LARA),
 entwickelt von der Steuerungsinstanz (Vibe) nach dem 14-Schritte-Ablauf.
 
 ## Zweck
@@ -19,7 +19,7 @@ Modelle nicht liefern, taucht nicht in den Befunden auf.
 workflows/prompt-review/
 ├── Dockerfile              # Baut den Worker-Container (managed deployment)
 ├── pyproject.toml          # Abhaengigkeiten und pytest-Konfiguration
-├── worker.py               # Entrypoint: run_worker(discover_all_workflows...)
+├── main.py                 # Entrypoint: run_worker(discover_all_workflows...)
 ├── src/worker/
 │   ├── workflows/prompt_review.py   # Workflow + Modellaktivitaet (SDK)
 │   └── logic/review.py              # Reine Logik, ohne SDK (isoliert testbar)
@@ -48,7 +48,7 @@ kritisch/wichtig/gering, grund, vorschlag) und `overall`.
 
 ```bash
 uv sync
-MISTRAL_API_KEY=... uv run python worker.py   # lokaler Worker
+MISTRAL_API_KEY=... uv run python main.py      # lokaler Worker
 uv run pytest                                   # Tests
 ```
 
@@ -68,9 +68,12 @@ uv run pytest                                   # Tests
 - Logiktests (tests/test_logic.py): lokal ausgefuehrt und bestanden
   (Parsing, Merge, Gesamteinschaetzung, Fehlerfaelle).
 - SDK-Integration (Workflow-Registrierung, Modellaufrufe): nicht lokal
-  getestet, da die Sandbox keine Paketinstallation zulaesst. Nach dem Merge
-  und der Bereitstellung durch einen repraesentativen Ausfuehrungstest
-  nachzuweisen.
+  getestet, da die Sandbox keine Paketinstallation zulaesst.
+- Runtime-Befund aus dem ersten Deployment (14.11.2026): Ein Entrypoint
+  `worker.py` im Hauptverzeichnis verdeckte das Paket `worker` aus `src/`
+  ('No module named worker.workflows; worker is not a package'), sodass kein
+  Workflow registriert wurde. Korrektur: Entrypoint heisst `main.py`;
+  Dockerfile und Aufruf entsprechend angepasst.
 
 ## Sicherheitsregeln
 
@@ -88,6 +91,5 @@ uv run pytest                                   # Tests
 ## Naechste Schritte
 
 1. Pull Request pruefen und mergen.
-2. Mistral GitHub App installieren, pay-as-you-go aktivieren.
-3. Managed Deployment erstellen und einen Ausfuehrungstest mit dem
-   THOR-AI-Masterauftrag v1.1 fahren.
+2. Managed Deployment auf dem korrigierten Stand ausfuehren und einen
+   Ausfuehrungstest mit dem THOR-AI-Masterauftrag v1.1 fahren.
