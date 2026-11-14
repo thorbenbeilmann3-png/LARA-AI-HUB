@@ -162,6 +162,22 @@ class TestExtractTextContent(unittest.TestCase):
             extract_text_content([{"thinking": [{"text": "nur Gedanke"}]}]), ""
         )
 
+    def test_reale_antwortstruktur_von_mistral_large_4(self):
+        # Exakt die im Managed Deployment beobachtete Struktur: thinking-Teil,
+        # danach der Antwortteil mit Schluessel 'text' und 'type': 'text'.
+        content = [
+            {
+                "thinking": [{"text": "Ueberlegung des Modells", "type": "text"}],
+                "type": "thinking",
+                "closed": True,
+            },
+            {"text": "Nummer: 1\nOrt: X\nSchwere: kritisch", "type": "text"},
+        ]
+        self.assertEqual(
+            extract_text_content(content),
+            "Nummer: 1\nOrt: X\nSchwere: kritisch",
+        )
+
     def test_unbekannter_inhalt_liefert_leer(self):
         self.assertEqual(extract_text_content(42), "")
 

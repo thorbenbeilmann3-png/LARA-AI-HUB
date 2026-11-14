@@ -85,6 +85,17 @@ async def review_with_model(
         ],
     )
     content = extract_text_content(response.choices[0].message.content)
+    if not content.strip():
+        # Das SDK kann die content-Teile als Objekte liefern statt als
+        # Dictionaries; extract_text_content erwartet Dictionaries. Daher
+        # wird die Antwort einmalig ueber model_dump normalisiert und
+        # erneut extrahiert (deterministisch, ohne Erfundenenes).
+        try:
+            data = response.model_dump(exclude_none=True)
+            message = (data.get("choices") or [{}])[0].get("message", {})
+            content = extract_text_content(message.get("content", ""))
+        except Exception:
+            content = ""
     if content.strip():
         return content
     try:
